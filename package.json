@@ -1,0 +1,407 @@
+{
+    "name": "xxlua",
+    "displayName": "XXLua",
+    "description": "Lua language support for Visual Studio Code",
+    "version": "0.9.12",
+    "luaDebugVersion": "1.3",
+    "unityDebugVersion": "1.1",
+    "publisher": "xxiong",
+    "keywords": [
+        "lua"
+    ],
+    "icon": "res/icon.png",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Debuggers"
+    ],
+    "activationEvents": [
+        "onLanguage:lua",
+        "onDebug"
+    ],
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "main": "./out/Extension.js",
+    "contributes": {
+        "commands": [{
+                "command": "XXLua.reloadLua",
+                "title": "[XXLua] 调试时重新加载Lua文件"
+            },
+            {
+                "command": "XXLua.luaPathCopy",
+                "title": "[XXLua] 复制Lua require路径"
+            },
+            {
+                "command": "XXLua.createTemplate",
+                "title": "[XXLua] 创建Lua模板文件"
+            },
+            {
+                "command": "XXLua.openTemplateFloder",
+                "title": "[XXLua] 打开Lua模板文件目录"
+            },
+            {
+                "command": "XXLua.openSnippetsCustom",
+                "title": "[XXLua] 自定义Lua代码提示"
+            },
+            {
+                "command": "XXLua.importLuaDebuger",
+                "title": "[XXLua] 导入Lua调试文件"
+            },
+            {
+                "command": "XXLua.importUnityDebuger",
+                "title": "[XXLua] 导入Unity调试文件"
+            }
+        ],
+        "menus": {
+            "editor/context": [{
+                    "when": "editorFocus && resourceLangId == lua",
+                    "command": "XXLua.reloadLua",
+                    "group": "xxiong@101"
+                },
+                {
+                    "when": "editorFocus && resourceLangId == lua",
+                    "command": "XXLua.luaPathCopy",
+                    "group": "xxiong@102"
+                }
+            ],
+            "explorer/context": [{
+                    "when": "resourceLangId == lua",
+                    "command": "XXLua.reloadLua",
+                    "group": "xxiong@101"
+                },
+                {
+                    "when": "resourceLangId == lua",
+                    "command": "XXLua.luaPathCopy",
+                    "group": "xxiong@102"
+                },
+                {
+                    "command": "XXLua.createTemplate",
+                    "group": "xxiong@110"
+                },
+                {
+                    "command": "XXLua.openTemplateFloder",
+                    "group": "xxiong@111"
+                },
+                {
+                    "command": "XXLua.openSnippetsCustom",
+                    "group": "xxiong@120"
+                },
+                {
+                    "command": "XXLua.importLuaDebuger",
+                    "group": "xxiong@130"
+                },
+                {
+                    "command": "XXLua.importUnityDebuger",
+                    "group": "xxiong@131"
+                }
+            ]
+        },
+        "languages": [{
+            "id": "lua",
+            "extensions": [
+                ".lua"
+            ],
+            "aliases": [
+                "Lua",
+                "lua"
+            ],
+            "configuration": "./language/language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "lua",
+            "scopeName": "source.lua",
+            "path": "./syntaxes/lua.json"
+        }],
+        "breakpoints": [{
+            "language": "lua"
+        }],
+        "snippets": [{
+            "language": "lua",
+            "path": "./snippets/snippets.json"
+        }],
+        "configuration": {
+            "title": "XXLua",
+            "properties": {
+                "XXLua.luaRoot": {
+                    "type": "string",
+                    "default": "${workspaceRoot}/",
+                    "description": "Lua项目根目录，工作目录根目录不为Lua根目录或存在多个工作目录时必填"
+                },
+                "XXLua.isInputClassName": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "创建模板文件时是否输入类名，取消勾选时默认使用文件名"
+                },
+                "XXLua.classFuncName": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array",
+                    "default": [
+                        "Class",
+                        "class"
+                    ],
+                    "description": "Lua类定义函数名"
+                },
+                "XXLua.templateDefaultArgs": {
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        ".*": {
+                            "default": "",
+                            "type": "string"
+                        }
+                    },
+                    "default": {
+                        "author": "empty"
+                    },
+                    "type": "object",
+                    "description": "模板默认参数"
+                },
+                "XXLua.templateFolder": {
+                    "type": "string",
+                    "description": "模板文件夹路径"
+                }
+            }
+        },
+        "configurationDefaults": {
+            "[lua]": {
+                "editor.quickSuggestions": {
+                    "other": true,
+                    "comments": true,
+                    "strings": true
+                }
+            }
+        },
+        "debuggers": [{
+                "type": "XXLua_attach_lua",
+                "label": "XXLua_Attach",
+                "program": "./out/debugger/AttachDebugAdapter.js",
+                "runtime": "node",
+                "configurationAttributes": {
+                    "attach": {
+                        "required": [
+                            "clientHost",
+                            "port",
+                            "printType",
+                            "externalVariables",
+                            "filterFiles"
+                        ],
+                        "properties": {
+                            "clientHost": {
+                                "type": "string",
+                                "description": "--客户端的IP，主要用于客户端运行时附加调试",
+                                "default": "localhost"
+                            },
+                            "port": {
+                                "type": "number",
+                                "description": "--调试器的端口",
+                                "default": 8896
+                            },
+                            "printType": {
+                                "type": "number",
+                                "default": 1,
+                                "description": "--print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出",
+                                "enum": [
+                                    1,
+                                    2,
+                                    3
+                                ]
+                            },
+                            "externalVariables": {
+                                "type": "array",
+                                "default": [
+                                    "super",
+                                    "_super",
+                                    "__super"
+                                ],
+                                "description": "扩展变量列表 (如：查看变量时指向子类可直接查看父类数据，或查看元表二次、多次封装的数据) ",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "filterFiles": {
+                                "type": "array",
+                                "default": [
+                                    "Core/Utils/lazyRequire.lua",
+                                    "Core/Class/ClassCreatorCopy.lua"
+                                ],
+                                "description": "过滤文件列表, 以下文件不会进入断点",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [{
+                    "name": "XXLua_Attach_Debugger",
+                    "type": "XXLua_attach_lua",
+                    "request": "attach",
+                    "clientHost": "localhost",
+                    "port": 8896,
+                    "printType": 1,
+                    "externalVariables": [
+                        "super",
+                        "_super",
+                        "__super"
+                    ],
+                    "filterFiles": [
+                        "Core/Utils/lazyRequire.lua",
+                        "Core/Class/ClassCreatorCopy.lua"
+                    ]
+                }],
+                "configurationSnippets": [{
+                    "label": "XXLua_Attach_Debugger",
+                    "description": "XXLua Attach调试器",
+                    "body": {
+                        "name": "XXLua_Attach_Debugger",
+                        "type": "XXLua_attach_lua",
+                        "request": "attach",
+                        "clientHost": "localhost",
+                        "port": 8896,
+                        "printType": 1,
+                        "externalVariables": [
+                            "super",
+                            "_super",
+                            "__super"
+                        ],
+                        "filterFiles": [
+                            "Core/Utils/lazyRequire.lua",
+                            "Core/Class/ClassCreatorCopy.lua"
+                        ]
+                    }
+                }],
+                "languages": [
+                    "lua"
+                ]
+            },
+            {
+                "type": "XXLua_launch_lua",
+                "label": "XXLua_Launch_Debug",
+                "program": "./out/debugger/LaunchDebugAdapter.js",
+                "runtime": "node",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "clientHost",
+                            "port",
+                            "printType",
+                            "externalVariables"
+                        ],
+                        "properties": {
+                            "clientHost": {
+                                "type": "string",
+                                "description": "--客户端的IP，主要用于客户端运行时附加调试",
+                                "default": "localhost"
+                            },
+                            "port": {
+                                "type": "number",
+                                "description": "--调试器的端口",
+                                "default": 8896
+                            },
+                            "printType": {
+                                "type": "number",
+                                "default": 1,
+                                "description": "--print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出",
+                                "enum": [
+                                    1,
+                                    2,
+                                    3
+                                ]
+                            },
+                            "externalVariables": {
+                                "type": "array",
+                                "default": [
+                                    "super",
+                                    "_super",
+                                    "__super"
+                                ],
+                                "description": "附加变量名列表 (如：查看变量时指向子类可直接查看父类数据，或查看元表二次、多次封装的数据)",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "filterFiles": {
+                                "type": "array",
+                                "default": [
+                                    "Core/Utils/lazyRequire.lua",
+                                    "Core/Class/ClassCreatorCopy.lua"
+                                ],
+                                "description": "过滤文件列表, 以下文件不会进入断点",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [{
+                    "name": "XXLua_Launch_Debuger",
+                    "type": "XXLua_launch_lua",
+                    "request": "launch",
+                    "clientHost": "localhost",
+                    "port": 8896,
+                    "printType": 1,
+                    "externalVariables": [
+                        "super",
+                        "_super",
+                        "__super"
+                    ],
+                    "filterFiles": [
+                        "Core/Utils/lazyRequire.lua",
+                        "Core/Class/ClassCreatorCopy.lua"
+                    ]
+                }],
+                "configurationSnippets": [{
+                    "label": "XXLua_Launch_Debuger",
+                    "description": "XXLua Launch调试器， 暂不可用",
+                    "body": {
+                        "name": "XXLua_Launch_Debuger",
+                        "type": "XXLua_launch_lua",
+                        "request": "launch",
+                        "clientHost": "localhost",
+                        "port": 8896,
+                        "printType": 1,
+                        "externalVariables": [
+                            "super",
+                            "_super",
+                            "__super"
+                        ],
+                        "filterFiles": [
+                            "Core/Utils/lazyRequire.lua",
+                            "Core/Class/ClassCreatorCopy.lua"
+                        ]
+                    }
+                }],
+                "languages": [
+                    "lua"
+                ]
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts"
+    },
+    "devDependencies": {
+        "@types/node": "^16.10.2",
+        "@types/vscode": "^1.60.0",
+        "@typescript-eslint/eslint-plugin": "^4.32.0",
+        "@typescript-eslint/parser": "^4.32.0",
+        "eslint": "^7.32.0",
+        "ts-loader": "^9.2.6",
+        "typescript": "^4.4.3",
+        "vscode-test": "^1.6.1"
+    },
+    "dependencies": {
+        "vscode-debugadapter": "^1.49.0",
+        "vscode-debugprotocol": "^1.49.0",
+        "vscode-languageclient": "7.0.0"
+    }
+}

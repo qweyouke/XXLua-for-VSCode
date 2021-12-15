@@ -1,0 +1,26 @@
+[{
+        "prefix": "func",
+        "body": "function {className}:${1:name}(${2})\n\t${3}\nend",
+        "description": "function {className}:name()"
+    },
+    {
+        "prefix": "func",
+        "body": "function ${1:name}(${2})\n\t${3}\nend",
+        "description": "function name()"
+    },
+    {
+        "prefix": "fori",
+        "body": "for i, v in ipairs(${1:value}) do\n\t${2}\nend",
+        "description": "fori"
+    },
+    {
+        "prefix": "forp",
+        "body": "for k, v in pairs(${1:value}) do\n\t${2}\nend",
+        "description": "forp"
+    },
+    {
+        "prefix": "for",
+        "body": "for i = ${1:1}, ${2:value} do\n\t${3}\nend",
+        "description": "for"
+    }
+]
