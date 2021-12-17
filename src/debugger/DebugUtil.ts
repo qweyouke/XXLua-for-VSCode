@@ -53,12 +53,6 @@ export class DebugUtil {
 
     //是否是过滤字符串
     public isFilterStr(v: string): boolean {
-        if (/^\"/.test(v)) {
-            return true;
-        }
-        if (/^\d+$/.test(v)) {
-            return true;
-        }
         for (const key in FILTER) {
             let filter = FILTER[key];
             if (filter === v) {

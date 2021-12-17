@@ -237,7 +237,7 @@ export class WorkspaceManager {
     }
 
     public getWorkspaceLocalData() {
-        return this.mContext?.globalState;
+        return this.mContext?.workspaceState;
     }
 
     //获取lua根目录

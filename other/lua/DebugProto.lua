@@ -84,17 +84,12 @@ local S2C_ReloadLuaArgs
 local C2S_ShowDialogMessage
 
 --C# 值信息
----@class CSharp_LuaValueInfo
----@field name string
----@field valueType string
----@field valueStr string
----@field isValue boolean
-local CSharp_LuaValueInfo
-
 ---@class CSharp_ValueInfo
----@field value userdata
----@field key string
----@field luaValueInfo CSharp_LuaValueInfo
+---@field _key string
+---@field _value any
+---@field _valueStr string
+---@field _valueType string
+---@field _tbkey string
 local CSharp_ValueInfo
 
 ---@class StackInfo 堆栈信息

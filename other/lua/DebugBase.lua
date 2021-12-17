@@ -295,12 +295,12 @@ function DebugBase:debugger_onLoop()
                                         data.var[tostring(k)] = utils.createVariable(v)
                                     end
                                 elseif type == "userdata" then
-                                    data = { type = "table", var = utils.GetCSharpValue(ret) }
+                                    data = { type = "table", var = utils.ParseCSharpValue(ret) }
                                 else
                                     data = utils.createVariable(ret)
                                 end
 
-                                self.m_debugSocket:sendWatch(args.exp, args.frameId, data, tostring(ret), "watch-" .. args.exp)
+                                self.m_debugSocket:sendWatch(args.exp, args.frameId, data, utils.getTbKey(ret), "watch-" .. args.exp)
                             end
                         )
                     end

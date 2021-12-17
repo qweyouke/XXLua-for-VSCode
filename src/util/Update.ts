@@ -261,31 +261,6 @@ export class Update {
                 }
             }
         );
-        let defaultPath = WorkspaceManager.getInstance().getLuaRoot();
-        let option: vscode.OpenDialogOptions = { // 可选对象
-            canSelectFiles: false, // 是否可选文件
-            canSelectFolders: true, // 是否可选文件夹
-            canSelectMany: false, // 是否可以选择多个
-            openLabel: msg
-        };
-        if (defaultPath) {
-            option.defaultUri = vscode.Uri.file(defaultPath);
-        }
-        vscode.window.showOpenDialog(option).then((uris: vscode.Uri[] | undefined) => {
-            if (uris) {
-                let path = uris[0].fsPath;
-                var idx = path.lastIndexOf("\\");
-                if (idx !== -1) {
-                    var lastPath = path.substring(idx + 1, path.length);
-                    if (lastPath === "Debug") {
-                        path = path.substring(0, idx);
-                    }
-                    func(path);
-                }
-            } else {
-                func(undefined);
-            }
-        });
     }
 
     //获取工作区lua调试器路径

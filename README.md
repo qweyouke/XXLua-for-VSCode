@@ -12,3 +12,4 @@ XXLua是一款基于vscode制作的lua编辑和调试插件，主要功能如下
 - 快捷创建Lua模板文件
 
 [使用说明](https://www.showdoc.com.cn/XXLua/7704782472938984)  
+[BUG反馈](https://github.com/qweyouke/XXLua-for-VSCode/issues)

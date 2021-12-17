@@ -9,7 +9,7 @@ local compareCache = {}
 local rootLastDir
 ---@diagnostic disable-next-line: deprecated
 local loadstring = loadstring or load
-local CSHARP_CLASS = {
+local CSHARP_BASE_VALUE = {
     ["System.Boolean"] = "boolean",
     ["System.Char"] = "string",
     ["System.String"] = "string",
@@ -25,7 +25,9 @@ local CSHARP_CLASS = {
     ["System.UIntPtr"] = "number",
     ["System.Decimal"] = "number",
     ["System.Single"] = "number",
-    ["System.Double"] = "number"
+    ["System.Double"] = "number",
+    ["Method"] = "function",
+    ["null"] = "nil",
 }
 
 local setfenv = setfenv
@@ -54,6 +56,40 @@ if (not setfenv) then
 
         return fn
     end
+end
+
+--获取table地址
+function Utils.getTbKey(var)
+    if type(var) == "userdata" and CS.LuaDebugTool then
+        return CS.LuaDebugTool.GetTbKey(var)
+    else
+        return tostring(var)
+    end
+end
+
+function Utils.isNil(var)
+    if var == nil then
+        return true
+    end
+
+    if type(var) == "userdata" then
+        --UntyEngine的Object判空不能直接判nil
+        if var.IsNull ~= nil then
+            return var:IsNull()
+        else
+            return nil
+        end
+    end
+
+    return false
+end
+
+function Utils.isCSharpTable(var)
+    local a
+    Utils.xpcall(function()
+        a = (type(var) == "userdata" and not CSHARP_BASE_VALUE[var:GetType():ToString()])
+    end)
+    return a
 end
 
 --反向查找
@@ -204,43 +240,38 @@ function Utils.loadScopes()
     for k, v in pairs(stackInfo) do
         scopeData.struct[k] = tostring(v)
     end
+
     return scopeData
 end
 
-function Utils.GetCSharpValue(var, key)
+function Utils.ParseCSharpValue(csharpVar)
+
     local varInfos = {}
     if CS.LuaDebugTool then
+
         ---@param field CSharp_ValueInfo
         local function createCSharpVariable(field)
-            if field.luaValueInfo.valueStr == "Null" then
-                varInfos[field.luaValueInfo.name] = {
-                    type = CSHARP_CLASS[field.luaValueInfo.valueType],
-                    var = field.luaValueInfo.valueStr
-                }
+            local type = CSHARP_BASE_VALUE[field._valueType]
+            if type then
+                varInfos[field._key] = { type = type, var = field._valueStr }
             else
-                local type = CSHARP_CLASS[field.luaValueInfo.valueType]
-                if type then
-                    varInfos[field.luaValueInfo.name] = { type = type, var = field.luaValueInfo.valueStr }
-                else
-                    varInfos[field.luaValueInfo.name] = { type = "table", var = field.luaValueInfo.valueStr .. " " .. field.luaValueInfo.addr }
-                end
+                varInfos[field._key] = { type = "table", var = Utils.getTbKey(field._value) }
             end
         end
 
-        if key then
-            var = CS.LuaDebugTool.getCSharpValue(var, key)
-        end
-
-        if var then
+        if csharpVar then
             -- print("getUserDataInfo")
+
             ---@type CSharp_ValueInfo
-            local fields = CS.LuaDebugTool.getUserDataInfo(var)
+            local fields = CS.LuaDebugTool.ParseCSharpValue(csharpVar)
+
             ---@diagnostic disable-next-line: undefined-field
             for i = 1, fields.Count do
                 local field = fields[i - 1]
                 createCSharpVariable(field)
             end
         end
+
     else
         varInfos = Utils.createVariable("读取C#变量失败，请确定LuaDebugTool.cs文件在项目工程中并启动")
     end
@@ -317,8 +348,10 @@ function Utils.createVariable(v)
         return { type = "nil", var = "nil" }
     else
         local type = type(v)
-        if type == "table" or type == "userdata" then
-            return { type = "table", var = tostring(v) }
+        if type == "table" or Utils.isCSharpTable(v) then
+            return { type = "table", var = Utils.getTbKey(v) }
+        elseif type == "userdata" then
+            return { type = CSHARP_BASE_VALUE[v:GetType():ToString()], var = v:ToString() }
         elseif type == "string" then
             v = Utils.filterSpecChar(tostring(v))
             return { type = "string", var = v }
@@ -375,9 +408,6 @@ function Utils.getVariable(path)
     local ret = { type = "nil", var = "nil" }
     local realPath = path
     local retTbkey
-    if condition then
-        
-    end
     if scopeInfo then
         retTbkey = tostring(scopeInfo.struct.invalid)
     end
@@ -429,33 +459,29 @@ function Utils.getVariable(path)
                     end
 
                     return v
-                elseif type(var) == "userdata" then
-                    if CS.LuaDebugTool then
-                        local v = CS.LuaDebugTool.getCSharpValue(var, k)
-                        return v
-                    end
-
-                    return nil
+                elseif Utils.isCSharpTable(var) and CS.LuaDebugTool then
+                    return CS.LuaDebugTool.GetCSharpValue(var, k)
                 end
+
+                return nil
             end
 
             local paths = path:split("-")
             local function findVar(var)
-                local tbkey = tostring(var)
+                local tbkey = Utils.getTbKey(var)
                 for k, v in ipairs(paths) do
                     local nextVar = getVar(var, v)
-                    if nextVar ~= nil then
-                        if type(nextVar) ~= "table" and type(nextVar) ~= "userdata" and k ~= #paths then
+                    if not Utils.isNil(nextVar) then
+                        if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
                             var = nil
                             tbkey = nil
                             break
                         else
-                            var = nextVar
-                            if type(var) ~= "table" and type(var) ~= "userdata" then
-                                tbkey = Utils.filterSpecChar(tostring(var))
-                            else
-                                tbkey = tostring(var)
+                            if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
+                                tbkey = Utils.getTbKey(nextVar)
                             end
+
+                            var = nextVar
                         end
                     else
                         var = nil
@@ -500,8 +526,10 @@ function Utils.getVariable(path)
                     end
 
                     Utils.findExtraVars(ret.var, realVar)
+                elseif Utils.isCSharpTable(realVar) then
+                    ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
                 elseif type(realVar) == "userdata" then
-                    ret = { type = "table", var = Utils.GetCSharpValue(realVar) }
+                    ret = { type = CSHARP_BASE_VALUE[realVar:GetType():ToString()], var = realVar:ToString() }
                 else
                     ret = Utils.createVariable(realVar)
                 end
@@ -510,12 +538,10 @@ function Utils.getVariable(path)
             end
         end
     )
-    -- dump(ret, "ret", 12)
+    -- dump(ret, "retTbkey", 3)
 
     return ret, retTbkey, realPath
 end
-
-
 
 ---@public
 ---监视变量
@@ -587,6 +613,7 @@ function Utils.findExtraVars(ret, var)
                         Utils.rawset(ret, newKey, Utils.createVariable(v))
                     end
                 end
+
                 getExtraVars(newVar, key, prefix and prefix .. "." .. key or key)
             elseif not cacheKeys[key] then
                 local newKey

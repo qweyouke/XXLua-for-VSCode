@@ -12,6 +12,12 @@ import * as readline from 'readline';
 import * as path from 'path';
 import { Console } from 'console';
 
+const WATCH_REGEXP1 = /\s*\w+\s*[:|\.]\s*\w+\(.*?\)/;
+const WATCH_REGEXP2 = /^#[\w|<|>]+/;
+const HOVER_SPLIT_REGEXP = /[\w|<|>]+/g;
+const HOVER_IS_NUMBER_REGEXP = /^\d+$/;
+const HOVER_IS_STRING_REGEXP = /^\"/;
+
 export class DebugSession extends LoggingDebugSession {
     //断点数据
     private mBreakPoints: { [_: string]: BreakInfo[] };
@@ -209,7 +215,7 @@ export class DebugSession extends LoggingDebugSession {
     //调试socket关闭
     private onDebugSocketClose() {
         this.initStackTrack();
-        this.printConsole('Debug socket disconnected.');
+        // this.printConsole('Debug socket disconnected.');
         if (this.mDebugSocket) {
             this.mDebugSocket.removeAllListeners();
             this.mDebugSocket.end();
@@ -256,7 +262,7 @@ export class DebugSession extends LoggingDebugSession {
         let stackId = this.mStackId;
         let listener = (retArgs: any) => {
             if (!this.mStackTracks || this.mStackId !== stackId) {
-                this.printConsole("addSafeEvent return : " + eventName);
+                // this.printConsole("addSafeEvent return : " + eventName);
                 this.removeListener(eventName, listener);
                 if (errorFunc) {
                     errorFunc();
@@ -584,7 +590,7 @@ export class DebugSession extends LoggingDebugSession {
 
     //from调试进程 变量请求
     async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
-        this.printConsole("variablesRequest args:" + JSON.stringify(args));
+        // this.printConsole("variablesRequest args:" + JSON.stringify(args));
         // this.printConsole("-----------------------------------------")
 
         const sendExpiredResponse = () => {
@@ -705,11 +711,11 @@ export class DebugSession extends LoggingDebugSession {
 
     //from调试进程 评估请求(鼠标悬浮到文字上、监视)
     async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
-        this.printConsole("evaluateRequest args:" + JSON.stringify(args));
+        // this.printConsole("evaluateRequest args:" + JSON.stringify(args));
         // this.printConsole("-----------------------------------------");
 
         if (args.frameId === undefined) {
-            this.printConsole("evaluateRequest not find frameId");
+            this.printConsole("evaluateRequest not find frameId", PrintType.error);
             return;
         }
 
@@ -726,12 +732,12 @@ export class DebugSession extends LoggingDebugSession {
         const scopeData = this.mScopeDatas[args.frameId];
         if (!scopeData) {
             if (this.mStackTracks) {
-                this.printConsole("register onReceiveScopes");
+                // this.printConsole("register onReceiveScopes");
                 //用于监视变量时，scopeData获取次序不对的情况
                 await new Promise((resolve, reject) => {
                     this.addSafeEvent(Proto.EVENT.onReceiveScopes, true,
                         (frameId) => {
-                            this.printConsole("resend evaluateRequest");
+                            // this.printConsole("resend evaluateRequest");
                             if (frameId !== args.frameId) {
                                 this.sendResponse(response);
                                 return;
@@ -776,7 +782,7 @@ export class DebugSession extends LoggingDebugSession {
             }
         };
 
-        if (args.context === "watch" && /\s*\w+\s*[:|\.]\s*\w+\(.*?\)/.test(args.expression)) {
+        if (args.context === "watch" && (WATCH_REGEXP1.test(args.expression) || WATCH_REGEXP2.test(args.expression))) {
             //来自监视并且是函数调用表达式
 
             //先读缓存
@@ -809,13 +815,18 @@ export class DebugSession extends LoggingDebugSession {
 
             //过滤特殊字符
             let path: string | undefined = args.expression;
-            if (DebugUtil.getInstance().isFilterStr(path)) {
-                let type = "object";
-                if (/^\d+$/.test(path)) {
+            
+            let isNumber = HOVER_IS_NUMBER_REGEXP.test(path);
+            let isString = HOVER_IS_STRING_REGEXP.test(path);
+            if (isNumber || isString || DebugUtil.getInstance().isFilterStr(path)) {
+                let type;
+                if (isNumber) {
                     type = "number";
-                } else if (/^\"/.test(path)) {
+                } else if (isString) {
                     path = path + "\"";
                     type = "string";
+                } else {
+                    type = "object";
                 }
                 response.body = {
                     result: path,
@@ -827,8 +838,7 @@ export class DebugSession extends LoggingDebugSession {
                 return;
             }
 
-            let reg = /[\w|<|>]+/g;
-            let match = path.matchAll(reg);
+            let match = path.matchAll(HOVER_SPLIT_REGEXP);
             path = undefined;
             for (const iterator of match) {
                 if (!path) {

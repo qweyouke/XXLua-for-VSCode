@@ -6,8 +6,9 @@ import { Handles } from 'vscode-debugadapter';
 import { CMD_C2D_GetScopes, CMD_C2D_GetVariable, CMD_C2D_WatchVariable, VariableData, VariablePathData } from './DebugData';
 export var TABLE = "table";
 
+const REPLACE_EXTRA_REGEXP = /\s{1}\[.*?\]/;
 
-export class ScopeData{
+export class ScopeData {
     core: DebugSession;
     data: CMD_C2D_GetScopes;
     //table唯一id <tbkey, id>
@@ -18,12 +19,12 @@ export class ScopeData{
     private mLoadedVars: Map<string, DebugProtocol.Variable[]>;
     //是否已加载完整个table <tbkey, boolean>
     private mIsLoadedFullTables: Map<string, boolean>;
-    
+
     private mHandles: Handles<string>;
-    localsStartRefID:number;
-    upsStartRefID:number;
-    globalStartRefID:number;
-    invalidStartRefID:number;
+    localsStartRefID: number;
+    upsStartRefID: number;
+    globalStartRefID: number;
+    invalidStartRefID: number;
 
     constructor(data: CMD_C2D_GetScopes, core: DebugSession) {
 
@@ -77,8 +78,10 @@ export class ScopeData{
 
     //添加路径数据
     addPath(path: string, tbkey: string, varKey: string | undefined = undefined) {
-        // this.core.printConsole("addPath path:" + path + "   tbkey:" + tbkey + "   varKey:" + varKey);
-        this.mLoadedPaths.set(path, {tbkey: tbkey, varKey: varKey});
+        if (!this.mLoadedPaths.has(path)) {
+            this.mLoadedPaths.set(path, { tbkey: tbkey, varKey: varKey });
+            // this.core.printConsole("addPath path:" + path + "   tbkey:" + tbkey + "   varKey:" + varKey);
+        }
     }
 
     //通过table唯一id找路径
@@ -128,7 +131,7 @@ export class ScopeData{
             } else {
                 let vars = this.mLoadedVars.get(pathData.tbkey);
                 if (vars) {
-                    return { tbkey: pathData.tbkey, vars: vars};
+                    return { tbkey: pathData.tbkey, vars: vars };
                 }
             }
         }
@@ -140,7 +143,7 @@ export class ScopeData{
     }
 
     //获取table变量
-    getTableVarByRefId(refID: number){
+    getTableVarByRefId(refID: number) {
         if (refID !== undefined) {
             const tbkey = this.getTbkey(refID);
             if (tbkey) {
@@ -151,7 +154,7 @@ export class ScopeData{
 
     //清除附加参数名
     private clearExternalKey(key: string) {
-        return key.replace(/\s{1}\[.*?\]/, "");
+        return key.replace(REPLACE_EXTRA_REGEXP, "");
     }
 
     //加载变量
@@ -162,13 +165,13 @@ export class ScopeData{
         const vars = data.vars;
 
         if (vars.type === TABLE) {
-            this.addPath(path,  tbkey);
+            this.addPath(path, tbkey);
 
             let variables: DebugProtocol.Variable[] = [];
             this.mLoadedVars.set(tbkey, variables);
             this.mIsLoadedFullTables.set(tbkey, true);
 
-            let varList:string[] = [];
+            let varList: string[] = [];
             for (const key in vars.var) {
                 varList.push(key);
             }
@@ -178,7 +181,7 @@ export class ScopeData{
                 const varPath = path + "-" + this.clearExternalKey(key);
                 if (value.type === TABLE) {
                     let newRefId = this.createRef(value.var);
-                    // this.core.printConsole("newRefId:" + newRefId);
+                    
                     variables.push({
                         name: key,
                         type: "",
@@ -186,6 +189,8 @@ export class ScopeData{
                         variablesReference: newRefId
                     });
                     this.addPath(varPath, value.var);
+
+                    // this.core.printConsole("create var: " + varPath + "     " + value.var + "     " + newRefId);
                 } else {
                     variables.push({
                         name: key,
@@ -197,7 +202,7 @@ export class ScopeData{
                 }
             });
 
-            return {tbkey: tbkey, vars: variables };
+            return { tbkey: tbkey, vars: variables };
         } else {
             let variables = this.getTableVarByRefId(refId);
             if (!variables) {
@@ -211,7 +216,7 @@ export class ScopeData{
             let value = {
                 name: key,
                 type: vars.type,
-                value: vars.type === "string" && "\"" + vars.var+"\"" || vars.var,
+                value: vars.type === "string" && "\"" + vars.var + "\"" || vars.var,
                 variablesReference: 0
             };
             variables.push(value);
