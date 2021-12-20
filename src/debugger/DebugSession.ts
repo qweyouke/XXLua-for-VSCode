@@ -12,9 +12,10 @@ import * as readline from 'readline';
 import * as path from 'path';
 import { Console } from 'console';
 
-const WATCH_REGEXP1 = /\s*\w+\s*[:|\.]\s*\w+\(.*?\)/;
-const WATCH_REGEXP2 = /^#[\w|<|>]+/;
-const HOVER_SPLIT_REGEXP = /[\w|<|>]+/g;
+const WATCH_REGEXP1 = /^\s*\w+\s*[:|\.]\s*\w+\(.*?\)\s*$/;
+const WATCH_REGEXP2 = /^\s*#\w+/;
+const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=)\s*\w+/;
+const HOVER_SPLIT_REGEXP = /\w+/g;
 const HOVER_IS_NUMBER_REGEXP = /^\d+$/;
 const HOVER_IS_STRING_REGEXP = /^\"/;
 
@@ -782,7 +783,7 @@ export class DebugSession extends LoggingDebugSession {
             }
         };
 
-        if (args.context === "watch" && (WATCH_REGEXP1.test(args.expression) || WATCH_REGEXP2.test(args.expression))) {
+        if (args.context === "watch" && (WATCH_REGEXP1.test(args.expression) || WATCH_REGEXP2.test(args.expression)) || WATCH_REGEXP3.test(args.expression)) {
             //来自监视并且是函数调用表达式
 
             //先读缓存
