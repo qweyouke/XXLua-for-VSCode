@@ -3,7 +3,7 @@
 ---@class DebugServer 
 ---@field m_socket socket
 ---@field m_server userdata
-local DebugServer = xxlua_require("DebugClass") ("DebugServer")
+local DebugServer = xxlua_require("DebugClass")("DebugServer")
 
 ---@class socket socket本体
 local socket = require("socket.core")
@@ -33,7 +33,7 @@ local function createSocket()
         port = port or 8896
         backlog = backlog or 30
 
-        for i = port, port + 1000 do
+        for i = port, port + 100 do
             local isBreak = true
             ---@diagnostic disable-next-line: undefined-field
             local sock = socket.tcp()
@@ -69,7 +69,7 @@ end
 function DebugServer:createServer(port)
     local sock, realPort = self.m_socket.bind(port)
     if sock then
-        print(string.format("The client(%d) is ready, wait for debugger's connection", realPort))
+        print(string.format("The client(%s:%d) is ready, wait for debugger's connection", self.m_socket.getAddr(), realPort))
         self.m_server = sock
         self.m_server:settimeout(0)
         return true

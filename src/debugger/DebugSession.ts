@@ -10,7 +10,6 @@ import * as vscode_debugadapter from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import * as readline from 'readline';
 import * as path from 'path';
-import { Console } from 'console';
 
 const WATCH_REGEXP1 = /^\s*\w+\s*[:|\.]\s*\w+\(.*?\)\s*$/;
 const WATCH_REGEXP2 = /^\s*#\w+/;
@@ -135,7 +134,7 @@ export class DebugSession extends LoggingDebugSession {
         await new Promise((resolve, reject) => {
             this.mDebugData = args;
             if (this.mDebugData.clientHost === "localhost") {
-                this.mDebugData.clientHost = DebugUtil.getInstance().getIPAdress() || "127.0.0.1";
+                this.mDebugData.clientHost = DebugUtil.getInstance().getIPAdress();
             }
             if (this.mLuaRoot) {
                 this.mDebugData.localRoot = this.mLuaRoot;
@@ -149,9 +148,10 @@ export class DebugSession extends LoggingDebugSession {
                     const server = net.createServer(client => {
                         this.onConnect(client);
                     })
-                        .listen(args.port)
+                        .listen(args.port, DebugUtil.getInstance().getIPAdress())
                         .on('listening', () => {
-                            this.printConsole(`The debugger(${args.clientHost}:${args.port}) is ready, wait for client's connection...`);
+                            let addr: any = server.address();
+                            this.printConsole(`The debugger(${addr?.address}:${args.port}) is ready, wait for client's connection...`);
                             this.onCreateServerSuccess();
                         })
                         .on('error', err => {

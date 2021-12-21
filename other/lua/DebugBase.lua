@@ -460,7 +460,7 @@ function DebugBase:hitBreakPoint(level)
     end
 
     if self:isInHitPoint() then
-        print("正在断点中，已跳过断点\n", debug.traceback())
+        -- print("正在断点中，跳过断点\n", debug.traceback())
         return
     end
 
@@ -472,21 +472,25 @@ function DebugBase:hitBreakPoint(level)
 end
 
 ---@public
----远程附加调试 (测试人员用)
+---远程附加调试 (给测试人员用)
+---使用此方法，会阻塞线程
+---然后开发人员可修改launch.json中的clientHost为测试机ip，然后启动调试器连接到测试机，保证socket能连上就能调试。
 function DebugBase:remoteHitBreakPoint(level)
     if self.m_supportSocket then
         self:hitBreakPoint(level)
         return
     end
 
+    if self:isInHitPoint() then
+        return
+    end
+
     --阻塞线程保留案发现场 等待远程连接
     while self.m_attachServer do
-        if self.m_attachServer then
-            if self.m_attachServer:accept() then
-                self:startDebug()
-                self:remoteHitBreakPoint(5)
-                return
-            end
+        if self.m_attachServer:accept() then
+            self:startDebug()
+            self:remoteHitBreakPoint(5)
+            return
         end
     end
 end
@@ -571,18 +575,23 @@ function DebugBase:startAttachServer()
         self.m_attachServer = xxlua_require("DebugServer").new()
         self.m_attachServer:createServer(self.m_port + 1)
 
+
         ---附加调试原理为客户端未连接到调试器时启动一个附加服务器，当调试器启动时会尝试连接这个服务器，连接上再由客户端向调试器发起调试连接。
         ---但是在unity编辑器模式时，这个“附加服务器端口”会绑定在unity编辑器上，即结束游戏运行时并不会销毁该端口，导致再次运行客户端并启动附加服务器时会因端口被占用而启动失败，进而无法附加调试
         ---所以需要在游戏退出时，自行调用销毁端口函数
         ---
         ---如果有其他类似情况，也需要自行添加销毁端口函数
-        if CS.LuaDebugTool then
+        if utils.isLoadedLuaDebugTool() then
+            print("11111")
             CS.LuaDebugTool.Init(
                 function()
                     printErr("Game quit, close server socket")
                     self:closeAttachServer()
                 end
             )
+            print("22222")
+        else
+            print("33333")
         end
 
         self:debugger_initAttachServerHook()

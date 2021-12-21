@@ -22,7 +22,7 @@ public class CSharpValue
 public static class LuaDebugTool
 {
     private const BindingFlags PROPERTY_FLAG =
-        BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static;
 
     private const BindingFlags FIELD_FLAG =
         BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Static;
@@ -164,19 +164,19 @@ public static class LuaDebugTool
             }
         }
 
-        //var methods = type.GetMethods(METHOD_FLAG);
-        //foreach (var method in methods)
-        //{
-        //    var name = method.Name;
-        //    try
-        //    {
-        //        PushCSharpValue(ret, method, name, "Method");
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        PushExceptionCSharpValue(ret, e, name);
-        //    }
-        //}
+        var methods = type.GetMethods(METHOD_FLAG);
+        foreach (var method in methods)
+        {
+            var name = method.Name;
+            try
+            {
+                PushCSharpValue(ret, method, name, "Method");
+            }
+            catch (Exception e)
+            {
+                PushExceptionCSharpValue(ret, e, name);
+            }
+        }
 
         return ret;
 

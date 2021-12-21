@@ -63,7 +63,7 @@ export class DebugUtil {
     }
 
     //获取本机ip
-    public getIPAdress(): string | undefined {
+    public getIPAdress(): string {
         var interfaces = os.networkInterfaces();
         for (var devName in interfaces) {
             var iface = interfaces[devName];
@@ -76,6 +76,7 @@ export class DebugUtil {
                 }
             }
         }
+        return "127.0.0.1";
     }
 
     public getNowTimeStr(): string {

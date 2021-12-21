@@ -30,7 +30,7 @@ export class AttachDebugSession extends DebugSession {
             port = this.mDebugData.port + 1;
         }
 
-        if (port > this.mDebugData.port + 1000) {
+        if (port > this.mDebugData.port + 100) {
             return;
         }
 

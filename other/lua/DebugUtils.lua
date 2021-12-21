@@ -60,13 +60,14 @@ end
 
 --获取table地址
 function Utils.getTbKey(var)
-    if type(var) == "userdata" and CS.LuaDebugTool then
+    if type(var) == "userdata" and Utils.isLoadedLuaDebugTool() then
         return CS.LuaDebugTool.GetTbKey(var)
     else
         return tostring(var)
     end
 end
 
+--判空
 function Utils.isNil(var)
     if var == nil then
         return true
@@ -84,12 +85,33 @@ function Utils.isNil(var)
     return false
 end
 
+--是否是c#表
 function Utils.isCSharpTable(var)
     local a
     Utils.xpcall(function()
         a = (type(var) == "userdata" and not CSHARP_BASE_VALUE[var:GetType():ToString()])
     end)
     return a
+end
+
+--是否加载c#调试工具
+function Utils.isLoadedLuaDebugTool()
+    local tool = CS and CS.LuaDebugTool
+    if tool then
+        local ret
+        xpcall(
+            function()
+                tool.GetTbKey("")
+                ret = true
+            end,
+            function()
+                ret = false
+            end
+        )
+        return ret
+    else
+        return false
+    end
 end
 
 --反向查找
@@ -247,7 +269,7 @@ end
 function Utils.ParseCSharpValue(csharpVar)
 
     local varInfos = {}
-    if CS.LuaDebugTool then
+    if Utils.isLoadedLuaDebugTool() then
 
         ---@param field CSharp_ValueInfo
         local function createCSharpVariable(field)
@@ -459,7 +481,7 @@ function Utils.getVariable(path)
                     end
 
                     return v
-                elseif Utils.isCSharpTable(var) and CS.LuaDebugTool then
+                elseif Utils.isCSharpTable(var) and Utils.isLoadedLuaDebugTool() then
                     return CS.LuaDebugTool.GetCSharpValue(var, k)
                 end
 
