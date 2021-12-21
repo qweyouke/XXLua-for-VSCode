@@ -151,7 +151,6 @@ export class DebugSession extends LoggingDebugSession {
                     })
                         .listen(args.port)
                         .on('listening', () => {
-                            let addr: any = server.address();
                             this.printConsole(`The debugger(${localHost}:${args.port}) is ready, wait for client's connection...`);
                             this.onCreateServerSuccess();
                         })
