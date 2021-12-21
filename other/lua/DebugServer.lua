@@ -3,7 +3,8 @@
 ---@class DebugServer 
 ---@field m_socket socket
 ---@field m_server userdata
-local DebugServer = xxlua_require("DebugClass") ("DebugServer")
+---@field m_client userdata
+local DebugServer = xxlua_require("DebugClass")("DebugServer")
 
 ---@class socket socket本体
 local socket = require("socket.core")
@@ -29,18 +30,15 @@ local function createSocket()
     ---@public
     ---创建服务器
     function _M.bind(port, backlog)
-
-        port = port or 8896
         backlog = backlog or 30
 
-        for i = port, port + 1000 do
-            local isBreak = true
+        for i = port, port + 100 do
             ---@diagnostic disable-next-line: undefined-field
             local sock = socket.tcp()
             local res, err = sock:bind("0.0.0.0", i)
-            if res then
+            if res and res == 1 then
                 res, err = sock:listen(backlog)
-                if res then
+                if res and res == 1 then
                     return sock, i
                 else
                     printWarn("listen failed, " .. err .. ".", i, backlog)
@@ -69,7 +67,7 @@ end
 function DebugServer:createServer(port)
     local sock, realPort = self.m_socket.bind(port)
     if sock then
-        print(string.format("The client(%d) is ready, wait for debugger's connection", realPort))
+        print(string.format("The client(%s:%d) is ready, wait for debugger's connection", self.m_socket.getAddr(), realPort))
         self.m_server = sock
         self.m_server:settimeout(0)
         return true
@@ -78,14 +76,22 @@ function DebugServer:createServer(port)
     end
 end
 
----@public
----检测连接
 function DebugServer:accept()
     if self.m_server then
-        local client = self.m_server:accept()
-        if client then
-            client:close()
-            return true
+        if not self.m_client then
+            self.m_client = self.m_server:accept()
+        end
+        return self.m_client
+    end
+end
+
+function DebugServer:receive()
+    if self.m_client then
+        local msg, status = self.m_client:receive()
+        if msg then
+            return json.decode(msg)
+        elseif status == "closed" then
+            return "closed"
         end
     end
 end
@@ -96,6 +102,11 @@ function DebugServer:close()
     if self.m_server then
         self.m_server:close()
         self.m_server = nil
+    end
+
+    if self.m_client then
+        self.m_client:close()
+        self.m_client = nil
     end
 end
 

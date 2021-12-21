@@ -108,6 +108,11 @@ local StackInfo
 ---@field var string 变量值
 local VariableData
 
+---设置host
+---@class S2C_StartDebug
+---@field host string
+---@field port number
+
 ---@class proto
 local proto = {
     -------------------------debug模式-------------------------
@@ -157,6 +162,8 @@ local proto = {
     showDialogMessage = "showDialogMessage",
     --重置堆栈信息
     resetStackInfo = "resetStackInfo",
+    --开始调试
+    startDebug = "startDebug"
 }
 
 return proto

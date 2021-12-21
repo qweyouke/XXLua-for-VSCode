@@ -24,7 +24,7 @@ xxlua_require("DebugFunctions")
 ---@field private m_hookCallCount number hook调用次数
 ---@field private m_lastReceiveTime number 最后一次receive时间
 ---@field private m_watchVars table<number, VariableData> 监视变量数据
-local DebugBase = xxlua_require("DebugClass") ("DebugBase")
+local DebugBase = xxlua_require("DebugClass")("DebugBase")
 
 local _yield = coroutine.yield
 local _resume = coroutine.resume
@@ -32,8 +32,6 @@ local _resume = coroutine.resume
 local utils = xxlua_require("DebugUtils")
 ---@type proto
 local proto = xxlua_require("DebugProto")
----@type json
-local json = xxlua_require("DebugJson")
 
 local function handler(target, method)
     return function(...)
@@ -64,10 +62,18 @@ function DebugBase:getHost()
     return self.m_host
 end
 
+function DebugBase:setHost(host)
+    self.m_host = host
+end
+
 ---@public
 ---获取端口
 function DebugBase:getPort()
     return self.m_port
+end
+
+function DebugBase:setPort(port)
+    self.m_port = port
 end
 
 ---@public
@@ -376,15 +382,39 @@ function DebugBase:tryAcceptAttachServer(event, line)
             local time = os.clock()
             if time - self.m_lastReceiveTime > 0.1 then
                 self.m_lastReceiveTime = time
-                --检测连接
-                if self.m_attachServer then
-                    if self.m_attachServer:accept() then
-                        self:startDebug()
-                    end
-                end
+                self:doReceiveAttachSocket()
             end
         else
             self.m_hookCallCount = self.m_hookCallCount + 1
+        end
+    end
+end
+
+---@private
+---接收附加调试网络消息
+function DebugBase:doReceiveAttachSocket()
+    if self.m_attachServer then
+        if self.m_attachServer:accept() then
+            local msg = self.m_attachServer:receive()
+            if msg then
+                if msg == "closed" then
+                    --停止
+                    self.m_attachServer:close()
+                    self.m_attachServer = nil
+                else
+                    local cmd = msg.command
+
+                    if cmd == proto.startDebug then
+                        ---@type S2C_StartDebug
+                        local args = msg.args
+                        self.m_host = args.host;
+                        self.m_port = args.port;
+                        self:startDebug()
+
+                        return true
+                    end
+                end
+            end
         end
     end
 end
@@ -460,7 +490,7 @@ function DebugBase:hitBreakPoint(level)
     end
 
     if self:isInHitPoint() then
-        print("正在断点中，已跳过断点\n", debug.traceback())
+        -- print("正在断点中，跳过断点\n", debug.traceback())
         return
     end
 
@@ -472,21 +502,24 @@ function DebugBase:hitBreakPoint(level)
 end
 
 ---@public
----远程附加调试 (测试人员用)
+---远程附加调试 (给测试人员用)
+---使用此方法，会阻塞线程
+---然后开发人员可修改launch.json中的clientHost为测试机ip，然后启动调试器连接到测试机，保证socket能连上就能调试。
 function DebugBase:remoteHitBreakPoint(level)
     if self.m_supportSocket then
         self:hitBreakPoint(level)
         return
     end
 
+    if self:isInHitPoint() then
+        return
+    end
+
     --阻塞线程保留案发现场 等待远程连接
     while self.m_attachServer do
-        if self.m_attachServer then
-            if self.m_attachServer:accept() then
-                self:startDebug()
-                self:remoteHitBreakPoint(5)
-                return
-            end
+        if self:doReceiveAttachSocket() then
+            self:remoteHitBreakPoint(5)
+            return
         end
     end
 end
@@ -566,27 +599,29 @@ end
 ---@public
 ---启动附加服务器
 function DebugBase:startAttachServer()
-    if not self.m_attachServer then
-        --附加服务器
-        self.m_attachServer = xxlua_require("DebugServer").new()
-        self.m_attachServer:createServer(self.m_port + 1)
+    utils.xpcall(function()
+        if not self.m_attachServer then
+            --附加服务器
+            self.m_attachServer = xxlua_require("DebugServer").new()
+            self.m_attachServer:createServer(self.m_port + 1)
 
-        ---附加调试原理为客户端未连接到调试器时启动一个附加服务器，当调试器启动时会尝试连接这个服务器，连接上再由客户端向调试器发起调试连接。
-        ---但是在unity编辑器模式时，这个“附加服务器端口”会绑定在unity编辑器上，即结束游戏运行时并不会销毁该端口，导致再次运行客户端并启动附加服务器时会因端口被占用而启动失败，进而无法附加调试
-        ---所以需要在游戏退出时，自行调用销毁端口函数
-        ---
-        ---如果有其他类似情况，也需要自行添加销毁端口函数
-        if CS.LuaDebugTool then
-            CS.LuaDebugTool.Init(
-                function()
-                    printErr("Game quit, close server socket")
-                    self:closeAttachServer()
-                end
-            )
+            ---附加调试原理为客户端未连接到调试器时启动一个附加服务器，当调试器启动时会尝试连接这个服务器，连接上再由客户端向调试器发起调试连接。
+            ---但是在unity编辑器模式时，这个“附加服务器端口”会绑定在unity编辑器上，即结束游戏运行时并不会销毁该端口，导致再次运行客户端并启动附加服务器时会因端口被占用而启动失败，进而无法附加调试
+            ---所以需要在游戏退出时，自行调用销毁端口函数
+            ---
+            ---如果有其他类似情况，也需要自行添加销毁端口函数
+            if utils.isLoadedLuaDebugTool() then
+                CS.LuaDebugTool.Init(
+                    function()
+                        printErr("Game quit, close server socket")
+                        self:closeAttachServer()
+                    end
+                )
+            end
+
+            self:debugger_initAttachServerHook()
         end
-
-        self:debugger_initAttachServerHook()
-    end
+    end)
 end
 
 return DebugBase

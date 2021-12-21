@@ -6,8 +6,6 @@
 local LuaDebugOrigin = xxlua_require("DebugClass") ("LuaDebugOrigin", xxlua_require("DebugBase"))
 ---@type Utils
 local utils = xxlua_require("DebugUtils")
-local _yield = coroutine.yield
-local _resume = coroutine.resume
 
 ---@protected
 ---override
@@ -21,8 +19,6 @@ function LuaDebugOrigin:debuger_resetDebugInfo()
     self.m_stepInCount = 0
 end
 
-local timess = 0
-local date = 0
 ---@protected
 ---override
 ---hook函数
@@ -40,7 +36,7 @@ function LuaDebugOrigin:debug_hook(event, line)
             local time = os.clock()
             if time - self.m_lastReceiveTime > 0.1 then
                 self.m_lastReceiveTime = time
-                --检测连接
+                --接收辅助网络消息
                 self:doReceiveSupportSocket()
             end
         else

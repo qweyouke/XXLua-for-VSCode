@@ -20,6 +20,7 @@ export const CMD = {
     reloadLua: "reloadLua",
     showDialogMessage: "showDialogMessage",
     resetStackInfo: "resetStackInfo",
+    startDebug: "startDebug"
 };
 
 //事件

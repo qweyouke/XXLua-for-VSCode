@@ -2,7 +2,9 @@
 import { DebugSession } from './DebugSession';
 import { IAttachRequestArguments } from './DebugData';
 import { DebugProtocol } from 'vscode-debugprotocol';
+import { DebugUtil} from './DebugUtil'
 import * as net from 'net';
+import * as Proto from './Proto';
 
 const ATTACH_TIME_OUT = 100;
 
@@ -30,7 +32,7 @@ export class AttachDebugSession extends DebugSession {
             port = this.mDebugData.port + 1;
         }
 
-        if (port > this.mDebugData.port + 1000) {
+        if (port > this.mDebugData.port + 100) {
             return;
         }
 
@@ -39,9 +41,6 @@ export class AttachDebugSession extends DebugSession {
         
 
         await new Promise((resolve, reject) => {
-            if (!this.mDebugData) {
-                return;
-            }
             if (!port) {
                 return;
             }
@@ -50,13 +49,24 @@ export class AttachDebugSession extends DebugSession {
             sock = net.connect(
                 {
                 port: port,
-                host: this.mDebugData.clientHost,
+                host: this.mDebugData?.clientHost,
                 timeout: ATTACH_TIME_OUT,
             }
             ).on('connect', () => {
                 // if (this.mDebugData) {
-                //     this.printConsole(`The debugger connecting to attach server(${this.mDebugData.clientHost}:${port}) successfully, wait for the attach server connect back to debugger`);
+                    // this.printConsole(`The debugger connecting to attach server(${this.mDebugData?.clientHost}:${port}) successfully, wait for the attach server connect back to debugger`);
                 // }
+
+                //
+                let msg = {
+                    command: Proto.CMD.startDebug,
+                    args: {
+                        host: DebugUtil.getInstance().getIPAdress(),
+                        port: this.mDebugData?.port
+                    }
+                };
+                sock.write(`${JSON.stringify(msg)}\n`);
+                sock.destroy();
             
             }).on('error', error => {
                 this.printConsole("Connecting to the attach server error!", 2);

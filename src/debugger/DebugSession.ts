@@ -10,7 +10,6 @@ import * as vscode_debugadapter from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import * as readline from 'readline';
 import * as path from 'path';
-import { Console } from 'console';
 
 const WATCH_REGEXP1 = /^\s*\w+\s*[:|\.]\s*\w+\(.*?\)\s*$/;
 const WATCH_REGEXP2 = /^\s*#\w+/;
@@ -134,8 +133,9 @@ export class DebugSession extends LoggingDebugSession {
 
         await new Promise((resolve, reject) => {
             this.mDebugData = args;
+            let localHost = DebugUtil.getInstance().getIPAdress();
             if (this.mDebugData.clientHost === "localhost") {
-                this.mDebugData.clientHost = DebugUtil.getInstance().getIPAdress() || "127.0.0.1";
+                this.mDebugData.clientHost = localHost;
             }
             if (this.mLuaRoot) {
                 this.mDebugData.localRoot = this.mLuaRoot;
@@ -151,7 +151,8 @@ export class DebugSession extends LoggingDebugSession {
                     })
                         .listen(args.port)
                         .on('listening', () => {
-                            this.printConsole(`The debugger(${args.clientHost}:${args.port}) is ready, wait for client's connection...`);
+                            let addr: any = server.address();
+                            this.printConsole(`The debugger(${localHost}:${args.port}) is ready, wait for client's connection...`);
                             this.onCreateServerSuccess();
                         })
                         .on('error', err => {
@@ -216,7 +217,7 @@ export class DebugSession extends LoggingDebugSession {
     //调试socket关闭
     private onDebugSocketClose() {
         this.initStackTrack();
-        // this.printConsole('Debug socket disconnected.');
+        this.printConsole('Debug socket disconnected.');
         if (this.mDebugSocket) {
             this.mDebugSocket.removeAllListeners();
             this.mDebugSocket.end();
@@ -237,7 +238,7 @@ export class DebugSession extends LoggingDebugSession {
     //from调试进程 断开连接
     disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments, request?: DebugProtocol.Request) {
         this.initStackTrack();
-        this.printConsole('Debugger disconnected.');
+        // this.printConsole('Debugger disconnected.');
         // this.printConsole("args:" + JSON.stringify(args))
         // this.printConsole("-----------------------------------------")
 

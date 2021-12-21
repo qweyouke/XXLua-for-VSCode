@@ -7,7 +7,8 @@
 --    5.printWarning() 警告打印
 --    6.dump() 打印整个table
 --
---    本插件完全开放客户端调试器代码并有详细注释，欢迎广大开发者们自由自定义
+--    本插件完全开源并有详细注释，欢迎广大开发者们自由自定义
+--    Github: https://github.com/qweyouke/XXLua-for-VSCode
 --]
 
 --'require'函数 如果和你的项目不同，需要修改
