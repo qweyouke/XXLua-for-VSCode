@@ -1,26 +1,55 @@
 [{
         "prefix": "func",
         "body": "function {className}:${1:name}(${2})\n\t${3}\nend",
-        "description": "function {className}:name()"
+        "description": "function {className}:name()",
+        "type": "Function"
     },
     {
         "prefix": "func",
         "body": "function ${1:name}(${2})\n\t${3}\nend",
-        "description": "function name()"
+        "description": "function name()",
+        "type": "Function"
     },
     {
         "prefix": "fori",
         "body": "for i, v in ipairs(${1:value}) do\n\t${2}\nend",
-        "description": "fori"
+        "description": "fori",
+        "type": "Function"
     },
     {
         "prefix": "forp",
         "body": "for k, v in pairs(${1:value}) do\n\t${2}\nend",
-        "description": "forp"
+        "description": "forp",
+        "type": "Function"
     },
     {
-        "prefix": "for",
+        "prefix": "forn",
         "body": "for i = ${1:1}, ${2:value} do\n\t${3}\nend",
-        "description": "for"
+        "description": "forn",
+        "type": "Function"
+    },
+    {
+        "prefix": "if",
+        "body": "if ${1:condition} then\n\t${0:}\nend",
+        "description": "if",
+        "type": "Function"
+    },
+    {
+        "prefix": "ifel",
+        "body": "if ${1:condition} then\n\t${2:}\nelse\n\t${0:}\nend",
+        "description": "ifel",
+        "type": "Function"
+    },
+    {
+        "prefix": "elif",
+        "body": "elseif ${1:condition} then\n\t${0:}\n",
+        "description": "elif",
+        "type": "Function"
+    },
+    {
+        "prefix": "while",
+        "body": "while ${1:condition} do\n\t${0:}\nend",
+        "description": "while",
+        "type": "Function"
     }
 ]

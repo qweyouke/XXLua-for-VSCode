@@ -4,6 +4,35 @@ import { Util } from "../util/Util";
 import { WorkspaceManager } from "../util/WorkspaceManager";
 import { CONFIG_NAME } from '../util/Define';
 
+const CompletionItemKind = new Map<string, vscode.CompletionItemKind>();
+CompletionItemKind.set("Text", vscode.CompletionItemKind.Text);
+CompletionItemKind.set("Method", vscode.CompletionItemKind.Method);
+CompletionItemKind.set("Function", vscode.CompletionItemKind.Function);
+CompletionItemKind.set("Constructor", vscode.CompletionItemKind.Constructor);
+CompletionItemKind.set("Field", vscode.CompletionItemKind.Field);
+CompletionItemKind.set("Variable", vscode.CompletionItemKind.Variable);
+CompletionItemKind.set("Class", vscode.CompletionItemKind.Class);
+CompletionItemKind.set("Interface", vscode.CompletionItemKind.Interface);
+CompletionItemKind.set("Module", vscode.CompletionItemKind.Module);
+CompletionItemKind.set("Property", vscode.CompletionItemKind.Property);
+CompletionItemKind.set("Unit", vscode.CompletionItemKind.Unit);
+CompletionItemKind.set("Value", vscode.CompletionItemKind.Value);
+CompletionItemKind.set("Enum", vscode.CompletionItemKind.Enum);
+CompletionItemKind.set("Keyword", vscode.CompletionItemKind.Keyword);
+CompletionItemKind.set("Snippet", vscode.CompletionItemKind.Snippet);
+CompletionItemKind.set("Color", vscode.CompletionItemKind.Color);
+CompletionItemKind.set("Reference", vscode.CompletionItemKind.Reference);
+CompletionItemKind.set("File", vscode.CompletionItemKind.File);
+CompletionItemKind.set("Folder", vscode.CompletionItemKind.Folder);
+CompletionItemKind.set("EnumMember", vscode.CompletionItemKind.EnumMember);
+CompletionItemKind.set("Constant", vscode.CompletionItemKind.Constant);
+CompletionItemKind.set("Struct", vscode.CompletionItemKind.Struct);
+CompletionItemKind.set("Event", vscode.CompletionItemKind.Event);
+CompletionItemKind.set("Operator", vscode.CompletionItemKind.Operator);
+CompletionItemKind.set("TypeParameter", vscode.CompletionItemKind.TypeParameter);
+CompletionItemKind.set("User", vscode.CompletionItemKind.User);
+CompletionItemKind.set("Issue", vscode.CompletionItemKind.Issue);
+
 class ClassData{
     _name: string;
     _line: number;
@@ -18,6 +47,7 @@ const _classCache: Map<string, ClassData> = new Map<string, ClassData>();
 const _classCacheTimer: Map<string, NodeJS.Timer> = new Map<string, NodeJS.Timer>();
 const CLASS_VALID_TIME = 60;
 const LOCAL_CHAR = "local ";
+const SNIPPETS_FILE = "snippets_custom.json";
 
 
 
@@ -79,14 +109,16 @@ function doCompletion(document: vscode.TextDocument, config: any) {
             const classData = getClassData(document);
             if (classData) {
                 str = str.replace(new RegExp("{className}", 'gm'), classData._name);
+            } else {
+                str = str.replace(new RegExp("{className}", 'gm'), document.fileName);
             }
         }
         return str;
     };
 
-
     let chipStr = formatString(config.description);
-    let item = new vscode.CompletionItem(chipStr, vscode.CompletionItemKind.Function);
+    let kind = CompletionItemKind.get(config.type);
+    let item = new vscode.CompletionItem(chipStr, kind);
     item.detail = "[XXLua] " + config.prefix;
     item.documentation = new vscode.MarkdownString(chipStr + "\nend", false);
     item.insertText = new vscode.SnippetString(formatString(config.body));
@@ -103,15 +135,37 @@ function resolveCompletionItem(item: any, token: vscode.CancellationToken) {
 }
 
 
-export function init(context: vscode.ExtensionContext){
-    let snippetConfig = JSON.parse(Util.getInstance().readFile(WorkspaceManager.getInstance().getExtensionDir() + "\\snippets\\snippets_custom.json"));
-    for (const key in snippetConfig) {
-        const config = snippetConfig[key];
-        context.subscriptions.push(vscode.languages.registerCompletionItemProvider('lua', {
-            provideCompletionItems: function(document, position, token, context) {
-                return doCompletion(document, config);
-            },
-            resolveCompletionItem
-        }, config.prefix));
-    }
+let providers:vscode.Disposable[] = [];
+export function init(context: vscode.ExtensionContext) {
+    const initSnippet = () => {
+        providers.forEach(provider => {
+            let idx = context.subscriptions.indexOf(provider);
+            if (idx !== -1) {
+                context.subscriptions.splice(idx, 1);
+                provider.dispose();
+            }
+        });
+        providers = [];
+        let snippetConfig = JSON.parse(Util.getInstance().readFile(WorkspaceManager.getInstance().getExtensionDir() + "\\snippets\\" + SNIPPETS_FILE));
+        for (const key in snippetConfig) {
+            const config = snippetConfig[key];
+
+            let provider = vscode.languages.registerCompletionItemProvider('lua', {
+                provideCompletionItems: function (document, position, token, context) {
+                    return doCompletion(document, config);
+                },
+                resolveCompletionItem
+            }, config.prefix);
+
+            providers.push(provider);
+            context.subscriptions.push(provider);
+        }
+    };
+    vscode.workspace.onDidSaveTextDocument((text: vscode.TextDocument) => {
+        let fileName = Util.getInstance().getFileName(text.fileName);
+        if (fileName === SNIPPETS_FILE) {
+            initSnippet();
+        }
+    });
+    initSnippet();
 }

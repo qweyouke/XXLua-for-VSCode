@@ -35,12 +35,6 @@
         "description": "<const> lua5.4",
         "scope": "source.lua"
     },
-    "[XXLua] elseif": {
-        "prefix": "elseif",
-        "body": "elseif",
-        "description": "elseif",
-        "scope": "source.lua"
-    },
     "[XXLua] false": {
         "prefix": "false",
         "body": "false",
@@ -129,30 +123,6 @@
         "prefix": "end",
         "body": "end",
         "description": "end",
-        "scope": "source.lua"
-    },
-    "[XXLua] while": {
-        "prefix": "while",
-        "body": "while ${1:condition} do\n\t${0:}\nend",
-        "description": "while",
-        "scope": "source.lua"
-    },
-    "[XXLua] if": {
-        "prefix": "if",
-        "body": "if ${1:condition} then\n\t${0:}\nend",
-        "description": "if",
-        "scope": "source.lua"
-    },
-    "[XXLua] ifel": {
-        "prefix": "ifel",
-        "body": "if ${1:condition} then\n\t${2:}\nelse\n\t${0:}\nend",
-        "description": "ifel",
-        "scope": "source.lua"
-    },
-    "[XXLua] elif": {
-        "prefix": "elif",
-        "body": "elseif ${1:condition} then\n\t${0:}\n",
-        "description": "elif",
         "scope": "source.lua"
     },
     "[XXLua] local": {
