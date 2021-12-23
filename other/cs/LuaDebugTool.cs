@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using UnityEngine;
-using XCore.Utils;
 using XLua;
 using Object = System.Object;
 
@@ -186,7 +185,7 @@ public static class LuaDebugTool
     {
         valueType = valueType ?? value.GetType().ToString();
         var valueStr = value.ToString();
-        if (!valueStr.IsNullOrEmpty() && valueStr != "null" && valueStr != "\0")
+        if (valueStr != null && valueStr != "" && valueStr != "null" && valueStr != "\0")
         {
             ret.Add(new CSharpValue()
             {
