@@ -594,14 +594,19 @@ function Utils.watchVariable(exp)
     xpcall(
         function()
             setfenv(fun, env)
-            ret = fun()
+            ret = { fun() }
         end,
         function(msg)
             ret = nil
         end
     )
-
-    return ret
+    if ret then
+        if #ret == 1 then
+            return ret[1]
+        else
+            return ret
+        end
+    end
 end
 
 ---查看额外变量
@@ -697,7 +702,7 @@ function Utils.reloadLua(data)
 
     if oldValue then
         package.loaded[luaPath] = nil
-        local realTab = xxlua_require(luaPath)
+        local realTab = require(luaPath)
         table.merge(oldValue, realTab)
 
         LuaDebuger:getSupportSocket():showDialogMessage("重载成功")
