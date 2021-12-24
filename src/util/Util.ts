@@ -83,18 +83,26 @@ export class Util {
     }
 
     //获取文件名+后缀
-    public getFileName(filePath: string): string {
-        if (this.mFileNameCache.has(filePath)) {
+    public getFileName(filePath: string, isIgnoreSuffix: boolean = false): string {
+        filePath = this.getRightSlashPath(filePath);
+
+        if (this.mFileNameCache.has(filePath + isIgnoreSuffix)) {
             let fileName = this.mFileNameCache.get(filePath);
             if (fileName) {
                 return fileName;
             }
         }
 
-        filePath = this.getRightSlashPath(filePath);
+        
         let idx = filePath.lastIndexOf("/") + 1;
         let fileName = filePath.substring(idx, filePath.length);
-        this.mFileNameCache.set(filePath, fileName);
+        if (isIgnoreSuffix) {
+            let idx = fileName.indexOf(".");
+            if (idx !== -1) { 
+                fileName = fileName.substring(0, idx);
+            }
+        }
+        this.mFileNameCache.set(filePath + isIgnoreSuffix, fileName);
         return fileName;
     }
 

@@ -110,7 +110,7 @@ function doCompletion(document: vscode.TextDocument, config: any) {
             if (classData) {
                 str = str.replace(new RegExp("{className}", 'gm'), classData._name);
             } else {
-                str = str.replace(new RegExp("{className}", 'gm'), document.fileName);
+                str = str.replace(new RegExp("{className}", 'gm'), Util.getInstance().getFileName(document.fileName, true));
             }
         }
         return str;
@@ -119,6 +119,7 @@ function doCompletion(document: vscode.TextDocument, config: any) {
     let chipStr = formatString(config.description);
     let kind = CompletionItemKind.get(config.type);
     let item = new vscode.CompletionItem(chipStr, kind);
+    item.sortText = config.sort;
     item.detail = "[XXLua] " + config.prefix;
     item.documentation = new vscode.MarkdownString(chipStr + "\nend", false);
     item.insertText = new vscode.SnippetString(formatString(config.body));
@@ -147,9 +148,13 @@ export function init(context: vscode.ExtensionContext) {
         });
         providers = [];
         let snippetConfig = JSON.parse(Util.getInstance().readFile(WorkspaceManager.getInstance().getExtensionDir() + "\\snippets\\" + SNIPPETS_FILE));
+
+        let sort = 1;
         for (const key in snippetConfig) {
             const config = snippetConfig[key];
-
+            config.sort = sort.toString();
+            sort++;
+            
             let provider = vscode.languages.registerCompletionItemProvider('lua', {
                 provideCompletionItems: function (document, position, token, context) {
                     return doCompletion(document, config);

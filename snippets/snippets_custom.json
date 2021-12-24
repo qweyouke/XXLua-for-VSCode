@@ -1,13 +1,25 @@
 [{
-        "prefix": "func",
+        "prefix": "function",
+        "body": "function ${1:name}(${2})\n\t${3}\nend",
+        "description": "function name()",
+        "type": "Function"
+    },
+    {
+        "prefix": "function",
         "body": "function {className}:${1:name}(${2})\n\t${3}\nend",
         "description": "function {className}:name()",
         "type": "Function"
     },
     {
-        "prefix": "func",
-        "body": "function ${1:name}(${2})\n\t${3}\nend",
-        "description": "function name()",
+        "prefix": "function",
+        "body": "function {className}.${1:name}(${2})\n\t${3}\nend",
+        "description": "function {className}.name()",
+        "type": "Function"
+    },
+    {
+        "prefix": "function",
+        "body": "{className}.${1:name} = function(${2})\n\t${3}\nend",
+        "description": "{className}.name = function()",
         "type": "Function"
     },
     {

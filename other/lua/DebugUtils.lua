@@ -58,6 +58,8 @@ if (not setfenv) then
     end
 end
 
+Utils.require = realRequire or require
+
 --获取table地址
 function Utils.getTbKey(var)
     if type(var) == "userdata" and Utils.isLoadedLuaDebugTool() then
@@ -702,7 +704,7 @@ function Utils.reloadLua(data)
 
     if oldValue then
         package.loaded[luaPath] = nil
-        local realTab = require(luaPath)
+        local realTab = Utils.require(luaPath)
         table.merge(oldValue, realTab)
 
         LuaDebuger:getSupportSocket():showDialogMessage("重载成功")
