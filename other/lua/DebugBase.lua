@@ -341,7 +341,6 @@ function DebugBase:onStepNext()
     self:debuger_resetDebugInfo()
     self.m_isStepNext = true
     local stack = _yield()
-    -- print("onStepNext")
     self.m_debugSocket:pause(stack)
 end
 
@@ -351,7 +350,6 @@ function DebugBase:onStepIn()
     self:debuger_resetDebugInfo()
     self.m_isStepIn = true
     local stack = _yield()
-    -- print("onStepIn")
     self.m_debugSocket:pause(stack)
 end
 
@@ -397,22 +395,16 @@ function DebugBase:doReceiveAttachSocket()
         if self.m_attachServer:accept() then
             local msg = self.m_attachServer:receive()
             if msg then
-                if msg == "closed" then
-                    --停止
-                    self.m_attachServer:close()
-                    self.m_attachServer = nil
-                else
-                    local cmd = msg.command
+                local cmd = msg.command
 
-                    if cmd == proto.startDebug then
-                        ---@type S2C_StartDebug
-                        local args = msg.args
-                        self.m_host = args.host;
-                        self.m_port = args.port;
-                        self:startDebug()
+                if cmd == proto.startDebug then
+                    ---@type S2C_StartDebug
+                    local args = msg.args
+                    self.m_host = args.host;
+                    self.m_port = args.port;
+                    self:startDebug()
 
-                        return true
-                    end
+                    return true
                 end
             end
         end

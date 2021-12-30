@@ -100,7 +100,8 @@ function DebugServer:receive()
         if msg then
             return json.decode(msg)
         elseif status == "closed" then
-            return "closed"
+            self.m_client:close()
+            self.m_client = nil
         end
     end
     if os.clock() - self.m_receiveTime >= MaxReceiveTimeOut then

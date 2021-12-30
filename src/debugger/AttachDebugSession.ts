@@ -5,7 +5,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { DebugUtil} from './DebugUtil'
 import * as net from 'net';
 import * as Proto from './Proto';
-const ATTACH_TIME_OUT = 100;
+const ATTACH_TIME_OUT = 200;
 
 export class AttachDebugSession extends DebugSession {
     attachRequest(response: DebugProtocol.AttachResponse, args: IAttachRequestArguments, request?: DebugProtocol.Request) {
@@ -35,7 +35,7 @@ export class AttachDebugSession extends DebugSession {
             return;
         }
 
-        this.printConsole("tryAttack " + port);
+        // this.printConsole("tryAttack " + port);
 
         
 
@@ -53,10 +53,9 @@ export class AttachDebugSession extends DebugSession {
             }
             ).on('connect', () => {
                 // if (this.mDebugData) {
-                    this.printConsole(`The debugger connecting to attach server(${this.mDebugData?.clientHost}:${port}) successfully, wait for the attach server connect back to debugger`);
+                    // this.printConsole(`The debugger connecting to attach server(${this.mDebugData?.clientHost}:${port}) successfully, wait for the attach server connect back to debugger`);
                 // }
 
-                //
 
             }).on('error', error => {
                 this.printConsole("Connecting to the attach server error!", 2);
@@ -67,15 +66,14 @@ export class AttachDebugSession extends DebugSession {
                 }
                 this.tryAttach(port + 1);
             }).on('timeout', () => {
-                this.printConsole("Connecting to the attach server timeout!", 2);
+                // this.printConsole("Connecting to the attach server timeout!", 2);
                 sock.destroy();
                 
                 if (!port) {
                     return;
                 }
                 this.tryAttach(port + 1);
-            }).on('data',  (data) => {
-                this.printConsole("receive data");
+            }).on('data', (data) => {
                 let msg = {
                     command: Proto.CMD.startDebug,
                     args: {
