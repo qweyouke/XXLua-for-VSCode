@@ -13,6 +13,7 @@
 
 --'require'函数 如果和你的项目不同，需要修改
 local require = realRequire or require
+
 --前缀路径
 local _prefixPath
 local _rootName
@@ -75,6 +76,7 @@ return function(host, port)
     else
         xxlua_require("LuaDebugOrigin")
     end
+    xxlua_require("DebugUtils").require = require
 
     LuaDebuger:startDebug(host, port)
 end

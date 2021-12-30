@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { Util } from './Util';
 import { WorkspaceManager } from './WorkspaceManager';
 import { LOCAL_DATA_NAME } from './Define';
+import path = require('path');
 
 export class Update {
     static _instance: Update;
@@ -14,47 +15,60 @@ export class Update {
     }
 
     private mLuaDebugPath: string | undefined;
-    private mUnityDebugPath: string| undefined;
+    private mUnityDebugPath: string | undefined;
+    private mLuaFrameworks: string[] | undefined;
 
     constructor() {
 
     }
 
     //准备检查更新
-    public readyCheckUpdate(){
-        WorkspaceManager.getInstance().initFileList(()=>{
+    public readyCheckUpdate() {
+        WorkspaceManager.getInstance().initFileList(() => {
             this.checkLuaDebugUpdate();
         });
     }
 
     //检查lua调试器更新
-    private checkLuaDebugUpdate(){
+    private checkLuaDebugUpdate() {
         if (this.isLoadLuaDebug()) {
             if (this.isLuaDebugLowVersion()) {
-                vscode.window.showWarningMessage("发现Lua调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
-                .then( (select) => {
-                    if (select === "更新(推荐)") {
-                        var luaDebugPath = this.getLocalLuaDebugPath();
-                        if (luaDebugPath) {
-                            this.importLuaDebuger(luaDebugPath);
+                vscode.window.showInformationMessage("发现Lua调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
+                    .then((select) => {
+                        if (select === "更新(推荐)") {
+                            var luaDebugPath = this.getLocalLuaDebugPath();
+                            vscode.window.showInformationMessage("找到缓存路径:\n" + luaDebugPath + "\n是否导入？", "导入", "重新选择路径").then((select) => {
+                                if (select === "导入") {
+                                    this.importLuaDebuger(luaDebugPath);
+                                    this.checkUnityDebugUpdate();
+                                } else if (select === "重新选择路径") {
+                                    this.showImportLuaDebugerDialog(
+                                        (ret) => {
+                                            if (ret) {
+                                                this.checkUnityDebugUpdate();
+                                            } else {
+                                                this.checkLuaDebugUpdate();
+                                            }
+                                        }
+                                    );
+                                } else {
+                                    this.checkLuaDebugUpdate();
+                                }
+                            });
+                        } else {
+                            if (select === "跳过本次更新") {
+                                this.updateLocalLuaDebugVersion();
+                            }
                             this.checkUnityDebugUpdate();
-                        }else{
-                            this.checkLuaDebugUpdate();
                         }
-                    } else{
-                        if (select === "跳过本次更新") {
-                            this.updateLocalLuaDebugVersion();
-                        } 
-                        this.checkUnityDebugUpdate();
-                    }
-                });
-            }else{
+                    });
+            } else {
                 this.checkUnityDebugUpdate();
             }
-        }else{
+        } else {
             const importLuaDebuger = () => {
-                vscode.window.showWarningMessage("Lua调试文件缺失，是否导入 (Lua调试文件缺失将导致不能使用调试功能)", '导入', '忽略')
-                    .then( (select) => {
+                vscode.window.showInformationMessage("Lua调试文件缺失，是否导入 (Lua调试文件缺失将导致不能使用调试功能)", '导入', '忽略')
+                    .then((select) => {
                         if (select === "导入") {
                             this.showImportLuaDebugerDialog(
                                 (ret) => {
@@ -73,41 +87,69 @@ export class Update {
         }
     }
 
+    //显示选择unity lua框架
+    public showSelectLuaFramework(func: ((select: string | undefined) => void)): void {
+        vscode.window.showInformationMessage("选择你的Lua框架", ...this.getExtensionLuaFramework())
+            .then((select) => {
+                if (select) {
+                    this.updateLocalLuaFramework(select);
+                }
+                func(select);
+            }
+            );
+    }
+
     //检查unity调试器更新
-    private checkUnityDebugUpdate(){
+    private checkUnityDebugUpdate() {
         if (this.isDisableUnityDebug()) {
             return;
         }
 
+        const doImport = () => {
+            this.showSelectLuaFramework((select) => {
+                if (!select) {
+                    this.checkUnityDebugUpdate();
+                } else {
+                    this.showImportUnityDialog(
+                        (ret) => {
+                            if (!ret) {
+                                this.checkUnityDebugUpdate();
+                            }
+                        },
+                        select
+                    );
+                }
+            });
+
+        };
+
         if (this.isLoadUnityDebug()) {
             if (this.isUnityDebugLowVersion()) {
-                vscode.window.showWarningMessage("发现Unity调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
-                .then( (select) => {
-                    if (select === "更新(推荐)") {
-                        var unityDebugPath = this.getLocalUnityDebugPath();
-                        if (unityDebugPath) {
-                            this.importUnityDebug(unityDebugPath);
-                        }else{
-                            this.checkUnityDebugUpdate();
-                        }
-                    } else if (select === "跳过本次更新") {
-                        this.updateLocalUnityDebugVersion();
-                    }
-                });
-            }
-        }else{
-            const importUnityDebuger = () => {
-                vscode.window.showWarningMessage("Unity调试文件缺失，是否导入 (非Unity项目无需导入， Unity项目缺失本调试文件将导致调试时不能获取C#变量值)", '导入', '不再提示','忽略')
-                    .then( (select) => {
-                        if (select === "导入") {
-                            this.showImportUnityDialog(
-                                (ret) => {
-                                    if (!ret){
-                                        importUnityDebuger();
-                                    }
+                vscode.window.showInformationMessage("发现Unity调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
+                    .then((select) => {
+                        if (select === "更新(推荐)") {
+                            var unityDebugPath = this.getLocalUnityDebugPath();
+                            vscode.window.showInformationMessage("找到缓存路径:\n" + unityDebugPath + "\n是否导入？", "导入", "重新选择路径").then((select) => {
+                                if (select === "导入") {
+                                    this.importUnityDebug(unityDebugPath, this.getLocalLuaFramework());
+                                } else if (select === "重新选择路径") {
+                                    doImport();
+                                } else {
+                                    this.checkUnityDebugUpdate();
                                 }
-                            );
-                        }else if(select === "不再提示"){
+                            });
+                        } else if (select === "跳过本次更新") {
+                            this.updateLocalUnityDebugVersion();
+                        }
+                    });
+            }
+        } else {
+            const importUnityDebuger = () => {
+                vscode.window.showInformationMessage("Unity调试文件缺失，是否导入 (非Unity项目无需导入， Unity项目缺失本调试文件将导致调试时不能获取C#变量值)", '导入', '不再提示', '忽略')
+                    .then((select) => {
+                        if (select === "导入") {
+                            doImport();
+                        } else if (select === "不再提示") {
                             this.setDisableUnityDebug(true);
                         }
                     });
@@ -132,7 +174,7 @@ export class Update {
     public getLocalLuaDebugVersion(): string | undefined {
         return WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.luaDebugVersion);
     }
-    
+
     //获取插件lua调试器版本
     public getExtensionLuaDebugVersion(): string | undefined {
         return WorkspaceManager.getInstance().getExtension()?.packageJSON.luaDebugVersion;
@@ -151,13 +193,16 @@ export class Update {
     }
 
     //设置是否禁用unity调试器
-    public setDisableUnityDebug(isDisabled:boolean): void {
+    public setDisableUnityDebug(isDisabled: boolean): void {
+        if (isDisabled) {
+            vscode.window.showInformationMessage("已禁用unity调试器，如需重新启用unity调试器，可在VSCode资源管理器点击鼠标右键-导入Unity调试文件");
+        }
         WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.isDisableUnityDebug, isDisabled);
     }
 
     //是否已加载unity调试器
     public isLoadUnityDebug(): boolean {
-        return this.getLocalUnityDebugPath() ? true : false;
+        return (this.getLocalUnityDebugPath() && this.getLocalLuaFramework()) ? true : false;
     }
 
     //Unity调试器是否版本不匹配
@@ -182,7 +227,7 @@ export class Update {
 
     //--------------------------------------------------------------------------------------------
 
- 
+
 
     //打开导入Lua调试脚本弹窗
     public showImportLuaDebugerDialog(func: ((ret: boolean) => void) | undefined = undefined) {
@@ -197,10 +242,13 @@ export class Update {
     }
 
     //打开导入Unity调试脚本弹窗
-    public showImportUnityDialog(func: ((ret: boolean) => void) | undefined = undefined) {
-        this.showImportDebugFilesOpenDialog("选择Unity工程的Scripts目录导入", (path) => {
+    public showImportUnityDialog(func: ((ret: boolean) => void) | undefined = undefined, luaFramework: string | undefined = undefined) {
+        if (!luaFramework) {
+            luaFramework = this.getLocalLuaFramework();
+        }
+        this.showImportDebugFilesOpenDialog("导入", (path) => {
             if (path) {
-                this.importUnityDebug(path);
+                this.importUnityDebug(path, luaFramework);
             }
             if (func) {
                 func(path && true || false);
@@ -209,14 +257,17 @@ export class Update {
     }
 
     //导入lua脚本
-    public importLuaDebuger(path: string) {
+    public importLuaDebuger(path: string | undefined) {
+        if (!path) {
+            return;
+        }
         var from = WorkspaceManager.getInstance().getExtensionDir() + "/other/lua/";
         var to;
         const idx = path.lastIndexOf("/");
-        const lastDir = path.substring(idx+1,path.length);
+        const lastDir = path.substring(idx + 1, path.length);
         if (lastDir === "Debug") {
             to = path;
-        }else{
+        } else {
             to = path + "/Debug";
         }
         Util.getInstance().copyDir(from, to);
@@ -225,19 +276,34 @@ export class Update {
         WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.luaDebugPath, to);
     }
 
+    //获取Unity脚本路径
+    public getUnityDebugPath(luaFramework: string) {
+        return WorkspaceManager.getInstance().getExtensionDir() + "/other/cs/LuaDebugTool_" + luaFramework + ".cs";
+    }
+
     //导入unity脚本
-    public importUnityDebug(path: string) {
-        var from = WorkspaceManager.getInstance().getExtensionDir() + "/other/cs/";
+    public importUnityDebug(path: string | undefined, luaFramework: string | undefined = undefined) {
+        if (!path) {
+            return;
+        }
+        if (!luaFramework) {
+            luaFramework = this.getLocalLuaFramework();
+        }
+        if (!luaFramework) {
+            return;
+        }
+        var from = this.getUnityDebugPath(luaFramework);
         var to;
         const idx = path.lastIndexOf("/");
-        const lastDir = path.substring(idx+1,path.length);
+        const lastDir = path.substring(idx + 1, path.length);
         if (lastDir === "Debug") {
             to = path;
-        }else{
+        } else {
             to = path + "/Debug";
         }
-        Util.getInstance().copyDir(from, to);
-        Util.getInstance().openFileInFinder(to);
+        to = to + "/" + "LuaDebugTool.cs";
+        Util.getInstance().copy(from, to);
+        Util.getInstance().openFileInFinder(Util.getInstance().getDirPath(to));
         this.setDisableUnityDebug(false);
         this.updateLocalUnityDebugVersion();
         WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.unityDebugPath, to);
@@ -270,7 +336,7 @@ export class Update {
         }
         let debugPath = WorkspaceManager.getInstance().getExtensionLuaDebugPath();
         let files = Util.getInstance().readDir(debugPath);
-        let dirPath:string|undefined = undefined;
+        let dirPath: string | undefined = undefined;
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             let fileName = Util.getInstance().getFileName(file);
@@ -279,11 +345,11 @@ export class Update {
                 //不存在或有多个同名文件，匹配失败
                 dirPath = undefined;
                 break;
-            }else{
+            } else {
                 let dirPath2 = Util.getInstance().getDirPath(fullPath instanceof Array ? fullPath[0] : fullPath);
                 if (!dirPath) {
                     dirPath = dirPath2;
-                }if (dirPath !== dirPath2) {
+                } if (dirPath !== dirPath2) {
                     //文件路径不一致，匹配失败
                     dirPath = undefined;
                     break;
@@ -297,37 +363,52 @@ export class Update {
         this.mLuaDebugPath = dirPath;
         return dirPath;
     }
-    
+
+    //获取unity lua框架
+    public getLocalLuaFramework(): string | undefined {
+        return WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.unityDebugLuaFramework);
+    }
+
+    //设置unity lua框架
+    public updateLocalLuaFramework(str: string) {
+        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.unityDebugLuaFramework, str);
+    }
+
+    //获取插件unity lua框架
+    public getExtensionLuaFramework(): string[] {
+        if (!this.mLuaFrameworks) {
+            this.mLuaFrameworks = [];
+
+            let debugPath = WorkspaceManager.getInstance().getExtensionUnityDebugPath();
+            let files = Util.getInstance().readDir(debugPath);
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                let fileName = Util.getInstance().getFileName(file, true);
+                let match = fileName.match(/\w+_(\w+)/);
+                if (match) {
+                    this.mLuaFrameworks.push(match[1]);
+                }
+            }
+        }
+
+        return this.mLuaFrameworks;
+    }
+
     //获取工作区unity调试器路径
     public getLocalUnityDebugPath(): string | undefined {
         if (this.mUnityDebugPath) {
             return this.mUnityDebugPath;
         }
         //优先查找本地文件
-        let debugPath = WorkspaceManager.getInstance().getExtensionUnityDebugPath();
-        let files = Util.getInstance().readDir(debugPath);
-        let dirPath:string|undefined = undefined;
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            let fileName = Util.getInstance().getFileName(file);
-            let fullPath = WorkspaceManager.getInstance().getFileFullPath(fileName);
-            if (!fullPath || (fullPath instanceof Array && fullPath.length > 1)) {
-                //不存在或有多个同名文件，匹配失败
-                dirPath = undefined;
-                break;
-            }else{
-                let dirPath2 = Util.getInstance().getDirPath(fullPath instanceof Array ? fullPath[0] : fullPath);
-                if (dirPath && dirPath !== dirPath2) {
-                    //文件路径不一致，匹配失败
-                    dirPath = undefined;
-                    break;
-                }
-                dirPath = dirPath2;
-            }
-        }
-        //找不到就读配置
-        if (!dirPath) {
+        let dirPath: string | undefined = undefined;
+        let fullPath = WorkspaceManager.getInstance().getFileFullPath("LuaDebugTool.cs");
+        if (!fullPath || (fullPath instanceof Array && fullPath.length > 1)) {
+            //不存在或有多个同名文件，匹配失败
+
+            //找不到就读配置
             dirPath = WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.unityDebugPath);
+        } else {
+            dirPath = Util.getInstance().getDirPath(fullPath instanceof Array ? fullPath[0] : fullPath);
         }
         this.mUnityDebugPath = dirPath;
         return dirPath;

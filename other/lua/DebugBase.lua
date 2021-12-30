@@ -375,7 +375,7 @@ end
 ---尝试连接附加服务
 function DebugBase:tryAcceptAttachServer(event, line)
     if event == "call" then
-        if self.m_hookCallCount >= 10000 then
+        if self.m_hookCallCount >= 100 then
             self.m_hookCallCount = 0
 
             --os.clock 此接口性能消耗极小 调用100万次只需50毫秒 故可用作定时器

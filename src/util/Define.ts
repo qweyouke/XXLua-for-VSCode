@@ -18,6 +18,8 @@ export const LOCAL_DATA_NAME = {
     luaDebugVersion: "luaDebugVersion",
     //lua调试文件路径
     luaDebugPath: "luaDebugPath",
+    //lua框架
+    unityDebugLuaFramework: "unityDebugLuaFramework",
     //unity调试文件版本号
     unityDebugVersion: "unityDebugVersion",
     //unity调试文件路径

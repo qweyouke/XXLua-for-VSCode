@@ -4,6 +4,7 @@
 ---@field m_socket socket
 ---@field m_server userdata
 ---@field m_client userdata
+---@field m_receiveTime number
 local DebugServer = xxlua_require("DebugClass")("DebugServer")
 
 ---@class socket socket本体
@@ -13,6 +14,8 @@ local socket = require("socket.core")
 local json = xxlua_require("DebugJson")
 ---@type proto
 local proto = xxlua_require("DebugProto")
+--接收超时时间
+local MaxReceiveTimeOut = 1
 
 ---@private
 ---创建socket
@@ -80,10 +83,16 @@ function DebugServer:accept()
     if self.m_server then
         if not self.m_client then
             self.m_client = self.m_server:accept()
+            if self.m_client then
+                self.m_receiveTime = os.clock()
+                self.m_client:settimeout(0)
+                self.m_client:send("x")
+            end
         end
         return self.m_client
     end
 end
+
 
 function DebugServer:receive()
     if self.m_client then
@@ -94,11 +103,16 @@ function DebugServer:receive()
             return "closed"
         end
     end
+    if os.clock() - self.m_receiveTime >= MaxReceiveTimeOut then
+        self.m_client:close()
+        self.m_client = nil
+    end
 end
 
 ---@public
 ---关闭连接
 function DebugServer:close()
+
     if self.m_server then
         self.m_server:close()
         self.m_server = nil

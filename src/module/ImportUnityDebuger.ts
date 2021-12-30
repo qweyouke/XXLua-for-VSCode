@@ -6,7 +6,14 @@ import { Update } from "../util/Update";
 function importUnityDebuger(uri: vscode.Uri) {
     if (uri.fsPath) {
         var dir = Util.getInstance().getDirPath(uri.fsPath);
-        Update.getInstance().importUnityDebug(dir);
+        Update.getInstance().showSelectLuaFramework(
+            (select: string | undefined) => {
+                if (select) {
+                    Update.getInstance().importUnityDebug(dir, select);
+                }
+            }
+        );
+        
     } else {
         Update.getInstance().showImportUnityDialog();
     }

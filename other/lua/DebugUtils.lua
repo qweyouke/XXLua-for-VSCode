@@ -3,10 +3,8 @@
 ---@class Utils
 local Utils = {}
 local filePathCachePaths = {}
-local fullPathCachePaths = {}
 local compareStrCache = {}
 local compareCache = {}
-local rootLastDir
 ---@diagnostic disable-next-line: deprecated
 local loadstring = loadstring or load
 local CSHARP_BASE_VALUE = {
@@ -57,8 +55,6 @@ if (not setfenv) then
         return fn
     end
 end
-
-Utils.require = realRequire or require
 
 --获取table地址
 function Utils.getTbKey(var)
@@ -375,6 +371,7 @@ function Utils.createVariable(v)
         if type == "table" or Utils.isCSharpTable(v) then
             return { type = "table", var = Utils.getTbKey(v) }
         elseif type == "userdata" then
+            ---@diagnostic disable-next-line: undefined-field
             return { type = CSHARP_BASE_VALUE[v:GetType():ToString()], var = v:ToString() }
         elseif type == "string" then
             v = Utils.filterSpecChar(tostring(v))
@@ -704,6 +701,7 @@ function Utils.reloadLua(data)
 
     if oldValue then
         package.loaded[luaPath] = nil
+        ---@diagnostic disable-next-line: undefined-field
         local realTab = Utils.require(luaPath)
         table.merge(oldValue, realTab)
 

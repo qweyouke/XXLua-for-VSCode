@@ -1,26 +1,27 @@
 //调试器 工具类
 import * as os from 'os';
 
-const FILTER = [
-    "local",
-    "function",
-    "true",
-    "false",
-    "do",
-    "end",
-    "then",
-    "nil",
-    "if",
-    "while",
-    "return",
-    "elseif",
-    "break",
-    "for",
-    "else",
-    "or",
-    "and",
-    "goto",
-];
+const FILTER:any = {
+    "local": true,
+    "function": true,
+    "true": true,
+    "false": true,
+    "do": true,
+    "end": true,
+    "then": true,
+    "nil": true,
+    "if": true,
+    "while": true,
+    "return": true,
+    "elseif": true,
+    "break": true,
+    "for": true,
+    "else": true,
+    "or": true,
+    "and": true,
+    "goto": true,
+    "not": true
+};
 
 export const enum PrintType {
     normal,
@@ -53,13 +54,7 @@ export class DebugUtil {
 
     //是否是过滤字符串
     public isFilterStr(v: string): boolean {
-        for (const key in FILTER) {
-            let filter = FILTER[key];
-            if (filter === v) {
-                return true;
-            }
-        }
-        return false;
+        return FILTER[v];
     }
 
     //获取本机ip

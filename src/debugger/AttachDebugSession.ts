@@ -5,7 +5,6 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import { DebugUtil} from './DebugUtil'
 import * as net from 'net';
 import * as Proto from './Proto';
-
 const ATTACH_TIME_OUT = 100;
 
 export class AttachDebugSession extends DebugSession {
@@ -36,7 +35,7 @@ export class AttachDebugSession extends DebugSession {
             return;
         }
 
-        // this.printConsole("tryAttack " + port);
+        this.printConsole("tryAttack " + port);
 
         
 
@@ -54,20 +53,11 @@ export class AttachDebugSession extends DebugSession {
             }
             ).on('connect', () => {
                 // if (this.mDebugData) {
-                    // this.printConsole(`The debugger connecting to attach server(${this.mDebugData?.clientHost}:${port}) successfully, wait for the attach server connect back to debugger`);
+                    this.printConsole(`The debugger connecting to attach server(${this.mDebugData?.clientHost}:${port}) successfully, wait for the attach server connect back to debugger`);
                 // }
 
                 //
-                let msg = {
-                    command: Proto.CMD.startDebug,
-                    args: {
-                        host: DebugUtil.getInstance().getIPAdress(),
-                        port: this.mDebugData?.port
-                    }
-                };
-                sock.write(`${JSON.stringify(msg)}\n`);
-                sock.destroy();
-            
+
             }).on('error', error => {
                 this.printConsole("Connecting to the attach server error!", 2);
                 sock.destroy();
@@ -77,13 +67,24 @@ export class AttachDebugSession extends DebugSession {
                 }
                 this.tryAttach(port + 1);
             }).on('timeout', () => {
-                // this.printConsole("Connecting to the attach server timeout!", 2);
+                this.printConsole("Connecting to the attach server timeout!", 2);
                 sock.destroy();
                 
                 if (!port) {
                     return;
                 }
                 this.tryAttach(port + 1);
+            }).on('data',  (data) => {
+                this.printConsole("receive data");
+                let msg = {
+                    command: Proto.CMD.startDebug,
+                    args: {
+                        host: DebugUtil.getInstance().getIPAdress(),
+                        port: this.mDebugData?.port
+                    }
+                };
+                sock.write(`${JSON.stringify(msg)}\n`);
+                sock.destroy();
             });
         });
     }

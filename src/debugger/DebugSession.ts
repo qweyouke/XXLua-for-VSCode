@@ -13,7 +13,8 @@ import * as path from 'path';
 
 const WATCH_REGEXP1 = /^\s*\w+\s*[:|\.]\s*\w+\(.*?\)\s*$/;
 const WATCH_REGEXP2 = /^\s*#\w+/;
-const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=)\s*\w+/;
+const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=|\+|\-|\*|\/)\s*\w+/;
+const WATCH_REGEXP4 = /.+?\[.+?\]\s*$/;
 const HOVER_SPLIT_REGEXP = /\w+/g;
 const HOVER_IS_NUMBER_REGEXP = /^\d+$/;
 const HOVER_IS_STRING_REGEXP = /^\"/;
@@ -185,7 +186,8 @@ export class DebugSession extends LoggingDebugSession {
             // this.print("SupportClient Connected.")
             this.mSupportSocket = client;
 
-            client.on('close', hadErr => this.onSupportSocketClose())
+            client.on('end', () => this.onSupportSocketClose())
+                .on('close', hadErr => this.onSupportSocketClose())
                 .on('error', err => this.onSupportSocketClose());
 
 
@@ -201,7 +203,8 @@ export class DebugSession extends LoggingDebugSession {
             // this.print("Client Connected.")
             this.mDebugSocket = client;
 
-            client.on('close', hadErr => this.onDebugSocketClose())
+            client.on('end', () => this.onSupportSocketClose())
+                .on('close', hadErr => this.onDebugSocketClose())
                 .on('error', err => this.onDebugSocketClose());
             this.mClientIndex = 0;
         }
@@ -783,8 +786,8 @@ export class DebugSession extends LoggingDebugSession {
             }
         };
 
-        if (args.context === "watch" && (WATCH_REGEXP1.test(args.expression) || WATCH_REGEXP2.test(args.expression)) || WATCH_REGEXP3.test(args.expression)) {
-            //来自监视并且是函数调用表达式
+        if (args.context === "watch" && (WATCH_REGEXP1.test(args.expression) || WATCH_REGEXP2.test(args.expression)) || WATCH_REGEXP3.test(args.expression) || WATCH_REGEXP4.test(args.expression)) {
+            //来自监视并且是lua算法表达式
 
             //先读缓存
             const varData = scopeData.getVariableByPath(args.expression);

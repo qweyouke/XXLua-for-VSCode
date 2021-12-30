@@ -82,6 +82,29 @@ export class Util {
         });
     }
 
+    //复制文件/目录
+    public copy(from: string, to: string) {
+        const fromPath = path.resolve(from);
+        const toPath = path.resolve(to);
+
+        const dir = this.getDirPath(toPath);
+        try {
+            fs.statSync(dir);
+        } catch (error) {
+            fs.mkdirSync(dir);
+        }
+
+        fs.stat(fromPath, (err, stat) => {
+            if (err) { return; }
+            if (stat.isFile()) {
+                fs.copyFileSync(fromPath, toPath);
+            }
+            if (stat.isDirectory()) {
+                this.copyDir(fromPath, toPath);
+            }
+        });
+    }
+
     //获取文件名+后缀
     public getFileName(filePath: string, isIgnoreSuffix: boolean = false): string {
         filePath = this.getRightSlashPath(filePath);
@@ -189,12 +212,19 @@ export class Util {
     public getDirPath(fsPath: string): string{
         fsPath = this.getRightSlashPath(fsPath);
         var dir = undefined;
-        if (fs.statSync(fsPath).isDirectory()) {
-            dir = fsPath;
-        }else{
+
+        try {
+            if (fs.statSync(fsPath).isDirectory()) {
+                dir = fsPath;
+            } else {
+                const idx = fsPath.lastIndexOf("/");
+                dir = fsPath.substring(0, idx);
+            }
+        } catch (error) {
             const idx = fsPath.lastIndexOf("/");
             dir = fsPath.substring(0, idx);
         }
+        
         return dir;
     }
 
@@ -218,5 +248,16 @@ export class Util {
                 func(undefined);
             }
         });
+    }
+
+    public isPathExist(path: string) {
+        let ret;
+        try {
+            fs.statSync(path);
+            ret = true;
+        } catch (error) {
+            ret = false;
+        }
+        return ret;
     }
 }
