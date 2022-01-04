@@ -1,7 +1,7 @@
 xxlua_require("DebugFunctions")
 
 ---调试器类基
----anthor: xxiong
+---author: xxiong
 ---
 ---@class DebugBase:DebugClass
 ---@field private m_initData S2C_InitializeArgs
@@ -29,9 +29,9 @@ local DebugBase = xxlua_require("DebugClass")("DebugBase")
 local _yield = coroutine.yield
 local _resume = coroutine.resume
 ---@type Utils
-local utils = xxlua_require("DebugUtils")
----@type proto
-local proto = xxlua_require("DebugProto")
+local Utils = xxlua_require("DebugUtils")
+---@type Protocol
+local Protocol = xxlua_require("DebugProto")
 
 local function handler(target, method)
     return function(...)
@@ -45,7 +45,7 @@ function DebugBase:ctor()
     self.m_lastReceiveTime = 0
     self.m_breakLines = {}
     self.m_watchVars = {}
-    self:debuger_resetRun()
+    self:debugger_resetRun()
 end
 
 ---@private
@@ -193,7 +193,7 @@ end
 
 ---@private
 ---重置调试变量
-function DebugBase:debuger_resetDebugInfo()
+function DebugBase:debugger_resetDebugInfo()
     self.m_isInRun = false
     self.m_isStepNext = false
     self.m_isStepIn = false
@@ -205,11 +205,11 @@ end
 
 ---@private
 ---重置运行
-function DebugBase:debuger_resetRun()
-    self:debuger_resetDebugInfo()
+function DebugBase:debugger_resetRun()
+    self:debugger_resetDebugInfo()
     self.m_isInRun = true
     self.m_currentStackInfo = nil
-    -- print("debuger_resetRun")
+    -- print("debugger_resetRun")
 end
 
 ---@private
@@ -224,34 +224,34 @@ function DebugBase:debugger_onLoop()
                 if msg == "closed" then
                     self:stopDebug()
                 else
-                    ---@type proto
+                    ---@type Protocol
                     local cmd = msg.command
-                    if cmd == proto.stop then
+                    if cmd == Protocol.stop then
                         --停止
                         self:stopDebug()
-                    elseif cmd == proto.initialize then
+                    elseif cmd == Protocol.initialize then
                         --初始化
                         self:onInitialize()
-                    elseif cmd == proto.continue then
+                    elseif cmd == Protocol.continue then
                         --继续
                         self:onContinue()
-                    elseif cmd == proto.next then
+                    elseif cmd == Protocol.next then
                         --单步跳过
                         self:onStepNext()
-                    elseif cmd == proto.stepIn then
+                    elseif cmd == Protocol.stepIn then
                         --单步跳入
                         self:onStepIn()
-                    elseif cmd == proto.stepOut then
+                    elseif cmd == Protocol.stepOut then
                         --单步跳出
                         self:onStepOut()
-                    elseif cmd == proto.setBreakpoints then
+                    elseif cmd == Protocol.setBreakpoints then
                         --断点信息
                         ---@type S2C_SetBreakpointsArgs
                         local args = msg.args
                         self:debugger_setBreakInfo(args)
-                    elseif cmd == proto.getScopes then
+                    elseif cmd == Protocol.getScopes then
                         --获取变量域
-                        utils.xpcall(
+                        Utils.xpcall(
                             function()
                                 if not self.m_currentStackInfo then
                                     return
@@ -261,33 +261,33 @@ function DebugBase:debugger_onLoop()
                                 local args = msg.args
                                 self.m_currentFrameId = args.frameId
 
-                                local scopeInfo = utils.loadScopes()
+                                local scopeInfo = Utils.loadScopes()
                                 self.m_scopeInfo[args.frameId] = scopeInfo
                                 self.m_debugSocket:sendScopes(args.frameId, scopeInfo)
                             end
                         )
-                    elseif cmd == proto.getVariable then
+                    elseif cmd == Protocol.getVariable then
                         --获取变量
-                        utils.xpcall(
+                        Utils.xpcall(
                             function()
 
                                 ---@type S2C_getVariable
                                 local args = msg.args
                                 self.m_currentFrameId = args.frameId
-                                local vars, tbkey, realPath = utils.getVariable(args.path)
+                                local vars, tbkey, realPath = Utils.getVariable(args.path)
 
                                 self.m_debugSocket:sendVariable(args.path, args.frameId, vars, tbkey, realPath)
                             end
                         )
-                    elseif cmd == proto.watchVariable then
+                    elseif cmd == Protocol.watchVariable then
                         --监视变量
-                        utils.xpcall(
+                        Utils.xpcall(
                             function()
                                 ---@type S2C_watchVariable
                                 local args = msg.args
                                 self.m_currentFrameId = args.frameId
 
-                                local ret = utils.watchVariable(args.exp)
+                                local ret = Utils.watchVariable(args.exp)
 
                                 --缓存监视变量
                                 self.m_currentStackInfo[args.frameId + 1].vars.watch[args.exp] = ret
@@ -298,15 +298,15 @@ function DebugBase:debugger_onLoop()
                                 if type == "table" then
                                     data = { type = "table", var = {} }
                                     for k, v in pairs(ret) do
-                                        data.var[tostring(k)] = utils.createVariable(v)
+                                        data.var[tostring(k)] = Utils.createVariable(v)
                                     end
                                 elseif type == "userdata" then
-                                    data = { type = "table", var = utils.ParseCSharpValue(ret) }
+                                    data = { type = "table", var = Utils.ParseCSharpValue(ret) }
                                 else
-                                    data = utils.createVariable(ret)
+                                    data = Utils.createVariable(ret)
                                 end
 
-                                self.m_debugSocket:sendWatch(args.exp, args.frameId, data, utils.getTbKey(ret), "watch-" .. args.exp)
+                                self.m_debugSocket:sendWatch(args.exp, args.frameId, data, Utils.getTbKey(ret), "watch-" .. args.exp)
                             end
                         )
                     end
@@ -322,7 +322,7 @@ end
 ---@protected
 ---初始化
 function DebugBase:onInitialize()
-    self:debuger_resetRun()
+    self:debugger_resetRun()
     local stack = _yield()
     self.m_debugSocket:pause(stack)
 end
@@ -330,7 +330,7 @@ end
 ---@protected
 ---继续
 function DebugBase:onContinue()
-    self:debuger_resetRun()
+    self:debugger_resetRun()
     local stack = _yield()
     self.m_debugSocket:pause(stack)
 end
@@ -338,7 +338,7 @@ end
 ---@protected
 ---单步跳过
 function DebugBase:onStepNext()
-    self:debuger_resetDebugInfo()
+    self:debugger_resetDebugInfo()
     self.m_isStepNext = true
     local stack = _yield()
     self.m_debugSocket:pause(stack)
@@ -347,7 +347,7 @@ end
 ---@protected
 ---单步跳入
 function DebugBase:onStepIn()
-    self:debuger_resetDebugInfo()
+    self:debugger_resetDebugInfo()
     self.m_isStepIn = true
     local stack = _yield()
     self.m_debugSocket:pause(stack)
@@ -356,7 +356,7 @@ end
 ---@protected
 ---单步跳出
 function DebugBase:onStepOut()
-    self:debuger_resetDebugInfo()
+    self:debugger_resetDebugInfo()
     self.m_isStepOut = true
     local stack = _yield()
     self.m_debugSocket:pause(stack)
@@ -397,7 +397,7 @@ function DebugBase:doReceiveAttachSocket()
             if msg then
                 local cmd = msg.command
 
-                if cmd == proto.startDebug then
+                if cmd == Protocol.startDebug then
                     ---@type S2C_StartDebug
                     local args = msg.args
                     self.m_host = args.host;
@@ -423,23 +423,23 @@ function DebugBase:doReceiveSupportSocket()
                 --停止
                 self:stopDebug()
             else
-                ---@type proto
+                ---@type Protocol
                 local cmd = msg.command
                 -- dump(msg, "SupportClient Receive")
 
-                if cmd == proto.stop then
+                if cmd == Protocol.stop then
                     --停止
                     self:stopDebug()
-                elseif cmd == proto.initialize then
+                elseif cmd == Protocol.initialize then
                     --初始化
                     self:debugger_Initialize(msg.args)
-                elseif cmd == proto.setBreakpoints then
+                elseif cmd == Protocol.setBreakpoints then
                     ---@type S2C_SetBreakpointsArgs
                     --断点信息
                     self:debugger_setBreakInfo(msg.args)
                     --接收到断点信息时，连续进入阻塞状态，节省时间
                     self:doReceiveSupportSocket()
-                elseif cmd == proto.reloadLua then
+                elseif cmd == Protocol.reloadLua then
                     ---@type S2C_ReloadLuaArgs
                     self.reloadData = msg.args
                 end
@@ -449,7 +449,7 @@ function DebugBase:doReceiveSupportSocket()
         if self.reloadData then
             local data = self.reloadData
             self.reloadData = nil
-            utils.reloadLua(data)
+            Utils.reloadLua(data)
         end
     end
 end
@@ -489,7 +489,7 @@ function DebugBase:hitBreakPoint(level)
     -- print("进入断点\n", debug.traceback())
 
     level = level or 4
-    local stackInfo = utils.getStackInfo(level, true)
+    local stackInfo = Utils.getStackInfo(level, true)
     self:hitBreakPointWithStackInfo(stackInfo)
 end
 
@@ -539,7 +539,7 @@ function DebugBase:stopDebug()
         self.m_initData = nil
         self.m_breakPoints = {}
         self.m_isHookEnabled = false
-        self:debuger_resetRun()
+        self:debugger_resetRun()
     end
 
     self:startAttachServer()
@@ -591,7 +591,7 @@ end
 ---@public
 ---启动附加服务器
 function DebugBase:startAttachServer()
-    utils.xpcall(function()
+    Utils.xpcall(function()
         if not self.m_attachServer then
             --附加服务器
             self.m_attachServer = xxlua_require("DebugServer").new()
@@ -602,7 +602,7 @@ function DebugBase:startAttachServer()
             ---所以需要在游戏退出时，自行调用销毁端口函数
             ---
             ---如果有其他类似情况，也需要自行添加销毁端口函数
-            if utils.isLoadedLuaDebugTool() then
+            if Utils.isLoadedLuaDebugTool() then
                 CS.LuaDebugTool.Init(
                     function()
                         printErr("Game quit, close server socket")

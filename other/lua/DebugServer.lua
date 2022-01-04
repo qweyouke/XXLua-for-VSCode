@@ -12,8 +12,8 @@ local socket = require("socket.core")
 
 ---@type json
 local json = xxlua_require("DebugJson")
----@type proto
-local proto = xxlua_require("DebugProto")
+---@type Protocol
+local Protocol = xxlua_require("DebugProto")
 --接收超时时间
 local MaxReceiveTimeOut = 1
 

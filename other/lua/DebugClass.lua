@@ -1,4 +1,4 @@
-local function class(classname, super)
+local function class(className, super)
     local superType = type(super)
     ---@class DebugClass
     local cls
@@ -31,7 +31,7 @@ local function class(classname, super)
         end
 
         --设置类型的名称
-        cls.__cname = classname
+        cls.__cname = className
         cls.__ctype = 1
 
         --定义该类型的创建实例的函数为基类的构造函数后复制到子类实例
@@ -61,7 +61,7 @@ local function class(classname, super)
             }
         end
 
-        cls.__cname = classname
+        cls.__cname = className
         cls.__ctype = 2 -- lua
         cls.__index = cls
 

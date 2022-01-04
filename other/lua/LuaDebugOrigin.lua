@@ -5,7 +5,7 @@
 ---@field private m_stepInCount number 单步跳入次数
 local LuaDebugOrigin = xxlua_require("DebugClass") ("LuaDebugOrigin", xxlua_require("DebugBase"))
 ---@type Utils
-local utils = xxlua_require("DebugUtils")
+local Utils = xxlua_require("DebugUtils")
 
 ---@protected
 ---override
@@ -14,8 +14,8 @@ function LuaDebugOrigin:ctor()
     self.m_stepInCount = 0
 end
 
-function LuaDebugOrigin:debuger_resetDebugInfo()
-    self.super.debuger_resetDebugInfo(self)
+function LuaDebugOrigin:debugger_resetDebugInfo()
+    self.super.debugger_resetDebugInfo(self)
     self.m_stepInCount = 0
 end
 
@@ -63,11 +63,11 @@ function LuaDebugOrigin:debug_hook(event, line)
         return
     end
 
-    local filePath, fileName, surfix = utils.getFilePathInfo(info.source)
+    local filePath, fileName = Utils.getFilePathInfo(info.source)
 
     if self.m_initData and self.m_initData.filterFiles then
         for i, v in pairs(self.m_initData.filterFiles) do
-            if utils.comparePath(filePath, v) then
+            if Utils.comparePath(filePath, v) then
                 return
             end
         end
@@ -108,23 +108,23 @@ function LuaDebugOrigin:debug_hook(event, line)
         if breakPoints then
             for k, v in pairs(breakPoints) do
                 if v.line == line then
-                    if utils.comparePath(v.fullPath, filePath) then
+                    if Utils.comparePath(v.fullPath, filePath) then
                         --日志打印
                         if v.logMessage then
                             if v.logMessage:len() >= 3 then
                                 if v.logMessage:sub(1, 3) == "###" then
-                                    utils.executeScript(
+                                    Utils.executeScript(
                                         string.format("print(%s)", v.logMessage:sub(4, v.logMessage:len()))
                                     )
                                     return
                                 end
                             end
 
-                            utils.executeScript(string.format("print(%s)", v.logMessage:sub(4, v.logMessage:len())))
+                            Utils.executeScript(string.format("print(%s)", v.logMessage:sub(4, v.logMessage:len())))
                         end
 
                         --判断条件
-                        if not v.condition or (v.condition and utils.executeScript(v.condition)) then
+                        if not v.condition or (v.condition and Utils.executeScript(v.condition)) then
                             self:hitBreakPoint()
                             return
                         end
@@ -136,12 +136,12 @@ function LuaDebugOrigin:debug_hook(event, line)
 end
 
 ---@type LuaDebugOrigin
-local LuaDebuger = LuaDebugOrigin.new()
+local LuaDebug = LuaDebugOrigin.new()
 xpcall(
     function()
-        _G.LuaDebuger = LuaDebuger
+        _G.LuaDebug = LuaDebug
     end,
     function()
-        rawset(_G, "LuaDebuger", LuaDebuger)
+        rawset(_G, "LuaDebug", LuaDebug)
     end
 )

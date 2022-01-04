@@ -11,8 +11,8 @@ local socket = require("socket.core")
 
 ---@type json
 local json = xxlua_require("DebugJson")
----@type proto
-local proto = xxlua_require("DebugProto")
+---@type Protocol
+local Protocol = xxlua_require("DebugProto")
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
 
@@ -97,7 +97,7 @@ end
 
 ---@public
 ---发送数据
----@param command proto
+---@param command Protocol
 ---@param args table
 ---@param isSendLength boolean
 function DebugClient:sendMsg(command, args, isSendLength)
@@ -124,7 +124,7 @@ end
 
 ---@public
 ---发送调试数据
----@param command proto
+---@param command Protocol
 ---@param args table
 function DebugClient:sendDebugMsg(command, args)
     if not self:isConnection() then
@@ -144,17 +144,17 @@ end
 
 ---发送初始化数据
 function DebugClient:initialize()
-    self:sendDebugMsg(proto.debugInitialize, { linesStartAt1 = true, columnsStartAt1 = true, pathFormat = "path" })
+    self:sendDebugMsg(Protocol.debugInitialize, { linesStartAt1 = true, columnsStartAt1 = true, pathFormat = "path" })
 end
 
 ---附加调试
 function DebugClient:attack(host, port)
-    self:sendDebugMsg(proto.debugAttach, { host = host, port = port })
+    self:sendDebugMsg(Protocol.debugAttach, { host = host, port = port })
 end
 
 ---启动调试
 function DebugClient:launch()
-    self:sendDebugMsg(proto.debugLaunch, nil)
+    self:sendDebugMsg(Protocol.debugLaunch, nil)
 end
 
 ---发送控制台打印消息
@@ -180,7 +180,7 @@ function DebugClient:printConsole(msg, type)
     end
 
     for k, v in ipairs(msgTb) do
-        self:sendMsg(proto.printConsole, { msg = v, type = type })
+        self:sendMsg(Protocol.printConsole, { msg = v, type = type })
     end
 end
 
@@ -203,41 +203,41 @@ function DebugClient:showDialogMessage(msg, type)
     end
 
     for k, v in ipairs(msgTb) do
-        self:sendMsg(proto.showDialogMessage, { msg = v, type = type })
+        self:sendMsg(Protocol.showDialogMessage, { msg = v, type = type })
     end
 end
 
 ---暂停
 function DebugClient:pause(stack)
     -- dump(stack, "发起暂停")
-    self:sendMsg(proto.pause, stack)
+    self:sendMsg(Protocol.pause, stack)
 end
 
 ---继续
 function DebugClient:continue()
-    self:sendMsg(proto.continue)
+    self:sendMsg(Protocol.continue)
 end
 
 ---单步跳过
 function DebugClient:next()
-    self:sendMsg(proto.next)
+    self:sendMsg(Protocol.next)
 end
 
 ---单步跳入
 function DebugClient:stepIn()
-    self:sendMsg(proto.stepIn)
+    self:sendMsg(Protocol.stepIn)
 end
 
 ---单步跳出
 function DebugClient:stepOut()
-    self:sendMsg(proto.stepOut)
+    self:sendMsg(Protocol.stepOut)
 end
 
 ---发送变量域
 ---@param frameId number
 ---@param scopeInfo ScopeInfo 变量域数据
 function DebugClient:sendScopes(frameId, scopeInfo)
-    self:sendMsg(proto.getScopes,
+    self:sendMsg(Protocol.getScopes,
         {
             frameId = frameId,
             struct = scopeInfo.struct
@@ -253,7 +253,7 @@ end
 ---@param realPath string 真实变量路径
 function DebugClient:sendVariable(path, frameId, vars, tbkey, realPath)
     self:sendMsg(
-        proto.getVariable,
+        Protocol.getVariable,
         {
             path = path,
             frameId = frameId,
@@ -272,7 +272,7 @@ end
 ---@param realPath string 真实路径
 function DebugClient:sendWatch(exp, frameId, ret, tbkey, realPath)
     self:sendMsg(
-        proto.watchVariable,
+        Protocol.watchVariable,
         {
             exp = exp,
             frameId = frameId,
@@ -285,7 +285,7 @@ end
 
 ---重置堆栈/异常情况的断点结束
 function DebugClient:resetStackInfo()
-    self:sendMsg(proto.resetStackInfo)
+    self:sendMsg(Protocol.resetStackInfo)
 end
 
 return DebugClient

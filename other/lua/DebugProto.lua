@@ -113,8 +113,8 @@ local VariableData
 ---@field host string
 ---@field port number
 
----@class proto
-local proto = {
+---@class Protocol
+local Protocol = {
     -------------------------debug模式-------------------------
     --初始化
     ---@field args DebugInitializeArgs
@@ -166,4 +166,4 @@ local proto = {
     startDebug = "startDebug"
 }
 
-return proto
+return Protocol

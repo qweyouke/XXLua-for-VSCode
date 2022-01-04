@@ -40,10 +40,10 @@ local PRINT_FORMAT = {
 ---@param str string
 local function doConsolePrint(typeData, str)
     ---@type S2C_InitializeArgs
-    local debugData = LuaDebuger and LuaDebuger:getDebugData() or nil
+    local debugData = LuaDebug and LuaDebug:getDebugData() or nil
     if not debugData or (debugData and (debugData.printType == 1 or debugData.printType == 2)) then
-        if LuaDebuger then
-            local debugSocket = LuaDebuger:getSupportSocket()
+        if LuaDebug then
+            local debugSocket = LuaDebug:getSupportSocket()
             if debugSocket then
                 debugSocket:printConsole(str, typeData.type)
             end
@@ -56,7 +56,7 @@ end
 ---@param str string
 local function doNormalPrint(typeData, str)
     ---@type S2C_InitializeArgs
-    local debugData = LuaDebuger and LuaDebuger:getDebugData() or nil
+    local debugData = LuaDebug and LuaDebug:getDebugData() or nil
     if not debugData or (debugData and (debugData.printType == 1 or debugData.printType == 3)) then
         if typeData.func then
             typeData.func(PRINT_FORMAT.DEFAULT(str))
@@ -74,7 +74,7 @@ end
 ---@param des string 详情
 local function doDumpPrint(typeData, title, des)
     ---@type S2C_InitializeArgs
-    local debugData = LuaDebuger and LuaDebuger:getDebugData() or nil
+    local debugData = LuaDebug and LuaDebug:getDebugData() or nil
     if not debugData or (debugData and (debugData.printType == 1 or debugData.printType == 3)) then
         if typeData.func then
             typeData.func(PRINT_FORMAT.DUMP(title, des))

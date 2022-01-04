@@ -252,7 +252,7 @@ function Utils.loadScopes()
     local scopeData = {
         struct = {}
     }
-    local stackInfo = LuaDebuger:getCurrentStackInfo()[LuaDebuger:getCurrentFrameId() + 1].vars
+    local stackInfo = LuaDebug:getCurrentStackInfo()[LuaDebug:getCurrentFrameId() + 1].vars
     stackInfo.global = _G
     stackInfo.invalid = {}
     stackInfo.watch = {}
@@ -425,7 +425,7 @@ end
 ---@public
 ---获取变量
 function Utils.getVariable(path)
-    local scopeInfo = LuaDebuger:getScopeInfo()
+    local scopeInfo = LuaDebug:getScopeInfo()
     local ret = { type = "nil", var = "nil" }
     local realPath = path
     local retTbkey
@@ -435,9 +435,9 @@ function Utils.getVariable(path)
 
     Utils.xpcall(
         function()
-            local frameId = LuaDebuger:getCurrentFrameId()
-            local vars = LuaDebuger:getCurrentStackInfo()[frameId + 1].vars
-            local debugData = LuaDebuger:getDebugData()
+            local frameId = LuaDebug:getCurrentFrameId()
+            local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
+            local debugData = LuaDebug:getDebugData()
 
             local loadExtraVar
             loadExtraVar = function(var, tb)
@@ -567,8 +567,8 @@ end
 ---@public
 ---监视变量
 function Utils.watchVariable(exp)
-    local frameId = LuaDebuger:getCurrentFrameId()
-    local vars = LuaDebuger:getCurrentStackInfo()[frameId + 1].vars
+    local frameId = LuaDebug:getCurrentFrameId()
+    local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
 
     local fun = loadstring("return " .. exp)
 
@@ -655,7 +655,7 @@ function Utils.findExtraVars(ret, var)
         end
     end
 
-    local debugData = LuaDebuger:getDebugData()
+    local debugData = LuaDebug:getDebugData()
     for _, key in ipairs(debugData.externalVariables) do
         getExtraVars(var, key)
     end
@@ -705,9 +705,9 @@ function Utils.reloadLua(data)
         local realTab = Utils.require(luaPath)
         table.merge(oldValue, realTab)
 
-        LuaDebuger:getSupportSocket():showDialogMessage("重载成功")
+        LuaDebug:getSupportSocket():showDialogMessage("重载成功")
     else
-        LuaDebuger:getSupportSocket():showDialogMessage("重载失败，文件未被加载", 2)
+        LuaDebug:getSupportSocket():showDialogMessage("重载失败，文件未被加载", 2)
     end
 end
 

@@ -1,18 +1,18 @@
 ---luajit调试器
 ---anthor: xxiong
----@class LuaDebugerJit:DebugBase
+---@class LuaDebugJit:DebugBase
 ---@field protected super DebugBase 父类
 ---@field private m_continueStackInfo StackInfo[] 跳过断点时的堆栈信息
 ---@field private m_stepNextTime number 单步跳过断点时hook的执行次数
 ---@field private m_isForceHitNextLine boolean 是否强制命中下一行断点
-local LuaDebugerJit = xxlua_require("DebugClass") ("LuaDebugerJit", xxlua_require("DebugBase"))
+local LuaDebugJit = xxlua_require("DebugClass") ("LuaDebugJit", xxlua_require("DebugBase"))
 ---@type Utils
-local utils = xxlua_require("DebugUtils")
+local Utils = xxlua_require("DebugUtils")
 local _yield = coroutine.yield
 
 ---@protected
 ---override
-function LuaDebugerJit:ctor()
+function LuaDebugJit:ctor()
     self.super.ctor(self)
     self.m_continueStackInfo = nil
 end
@@ -20,24 +20,24 @@ end
 ---@protected
 ---override
 ---重置调试变量
-function LuaDebugerJit:debuger_resetDebugInfo()
-    self.super.debuger_resetDebugInfo(self)
+function LuaDebugJit:debugger_resetDebugInfo()
+    self.super.debugger_resetDebugInfo(self)
     self.m_stepNextTime = 0
 end
 
 ---@protected
 ---override
 ---重置运行
-function LuaDebugerJit:debuger_resetRun()
-    self.super.debuger_resetRun(self)
+function LuaDebugJit:debugger_resetRun()
+    self.super.debugger_resetRun(self)
     self.m_isForceHitNextLine = false
 end
 
 ---@protected
 ---override
 ---初始化
-function LuaDebugerJit:onInitialize()
-    self:debuger_resetRun()
+function LuaDebugJit:onInitialize()
+    self:debugger_resetRun()
     local stack = _yield()
 
     local stackInfo = self.m_currentStackInfo[1]
@@ -51,9 +51,9 @@ end
 ---@protected
 ---override
 ---继续
-function LuaDebugerJit:onContinue()
+function LuaDebugJit:onContinue()
     --继续
-    self:debuger_resetRun()
+    self:debugger_resetRun()
     local stack = _yield()
 
     local stackInfo = self.m_currentStackInfo[1]
@@ -67,7 +67,7 @@ end
 ---@protected
 ---override
 ---hook函数
-function LuaDebugerJit:debug_hook(event, line)
+function LuaDebugJit:debug_hook(event, line)
     if not self.m_supportSocket then
         self:debugger_initAttachServerHook()
         return
@@ -115,10 +115,10 @@ function LuaDebugerJit:debug_hook(event, line)
             return
         end
 
-        local filePath, fileName, surfix = utils.getFilePathInfo(info.source)
+        local filePath, fileName, surfix = Utils.getFilePathInfo(info.source)
         if self.m_initData and self.m_initData.filterFiles then
             for i, v in pairs(self.m_initData.filterFiles) do
-                if utils.comparePath(filePath, v) then
+                if Utils.comparePath(filePath, v) then
                     return
                 end
             end
@@ -156,7 +156,7 @@ function LuaDebugerJit:debug_hook(event, line)
                 end
 
                 if isNext then
-                    local stackInfo = utils.getStackInfo(3, false)
+                    local stackInfo = Utils.getStackInfo(3, false)
                     if info.lastlinedefined == info.currentline and #stackInfo == 1 then
                         --函数return ， 下一步强制进入断点
                         self.m_isForceHitNextLine = true
@@ -170,7 +170,7 @@ function LuaDebugerJit:debug_hook(event, line)
                     if self.m_stepNextTime >= 2000000 then
                         printWarn("本函数执行代码过多, 跳过操作")
                         self.m_supportSocket:resetStackInfo()
-                        self:debuger_resetRun()
+                        self:debugger_resetRun()
                     end
                 end
             end
@@ -181,7 +181,7 @@ function LuaDebugerJit:debug_hook(event, line)
         if breakPoints then
             for k, v in pairs(breakPoints) do
                 if v.line == line then
-                    if utils.comparePath(v.fullPath, filePath) then
+                    if Utils.comparePath(v.fullPath, filePath) then
                         --日志打印
                         if v.logMessage then
                             if v.logMessage:len() >= 3 then
@@ -195,7 +195,7 @@ function LuaDebugerJit:debug_hook(event, line)
                         end
 
                         --判断条件
-                        if not v.condition or (v.condition and utils.executeScript(v.condition)) then
+                        if not v.condition or (v.condition and Utils.executeScript(v.condition)) then
                             self:hitBreakPoint()
                             return
                         end
@@ -209,7 +209,7 @@ end
 ---@public
 ---override
 ---停止调试
-function LuaDebugerJit:stopDebug()
+function LuaDebugJit:stopDebug()
     if self.m_supportSocket then
         self.m_continueStackInfo = nil
     end
@@ -217,13 +217,13 @@ function LuaDebugerJit:stopDebug()
     self.super.stopDebug(self)
 end
 
----@type LuaDebugerJit
-local LuaDebuger = LuaDebugerJit.new()
+---@type LuaDebugJit
+local LuaDebug = LuaDebugJit.new()
 xpcall(
     function()
-        _G.LuaDebuger = LuaDebuger
+        _G.LuaDebug = LuaDebug
     end,
     function()
-        rawset(_G, "LuaDebuger", LuaDebuger)
+        rawset(_G, "LuaDebug", LuaDebug)
     end
 )

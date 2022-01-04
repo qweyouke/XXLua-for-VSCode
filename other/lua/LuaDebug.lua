@@ -1,6 +1,6 @@
 --[
 --    本插件占用全局函数
---    1.LuaDebuger: 调试器实例
+--    1.LuaDebug: 调试器实例
 --    2.xxlua_require(): 调试器require方法（外部无用）
 --    3.print() 打印
 --    4.printErr() 错误打印
@@ -78,5 +78,5 @@ return function(host, port)
     end
     xxlua_require("DebugUtils").require = require
 
-    LuaDebuger:startDebug(host, port)
+    LuaDebug:startDebug(host, port)
 end
