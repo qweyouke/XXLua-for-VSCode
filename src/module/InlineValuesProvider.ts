@@ -5,7 +5,7 @@ import { DebugUtil } from '../debugger/DebugUtil';
 const LOCAL_EXP1 = /\w+/g;
 const LOCAL_EXP2 = "[\(\[\.\:\w]";
 const LOCAL_EXP3 = "[\.\:\w]";
-const LOCAL_EXP4 = /[\"'].*[\"']/g;
+const LOCAL_EXP4 = /[\"'].*?[\"']/g;
 const LOCAL_EXP5 = /--/g;
 const LOCAL_EXP6 = /[\w\[\]\.]+/g;
 const PARAM_EXP = /(?<=---@param\s+)\S+/;
@@ -21,7 +21,7 @@ interface LineRange {
 function findVar(lineNum: number, str: string, allValues: Map<string, LineRange>, isEnd: boolean): boolean {
     if (!str.match(LOCAL_EXP5)) {
         str = str.replace(LOCAL_EXP4, "");
-
+        
         if (isEnd) {
             var match = str.matchAll(LOCAL_EXP6);
             if (match) {
@@ -80,7 +80,7 @@ const handlerFuncList = [
 
 function provideInlineValues(document: vscode.TextDocument, viewPort: vscode.Range, context: vscode.InlineValueContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.InlineValue[]> {
     const allValues = new Map<string, LineRange>();
-    const endLine = context.stoppedLocation.end.line
+    const endLine = context.stoppedLocation.end.line;
     for (let l = viewPort.start.line; l <= endLine; l++) {
         const str = document.lineAt(l).text;
         for (const key in handlerFuncList) {
