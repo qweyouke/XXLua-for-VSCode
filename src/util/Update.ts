@@ -33,7 +33,7 @@ export class Update {
     private checkLuaDebugUpdate() {
         if (this.isLoadLuaDebug()) {
             if (this.isLuaDebugLowVersion()) {
-                vscode.window.showInformationMessage("发现Lua调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
+                vscode.window.showWarningMessage("发现Lua调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
                     .then((select) => {
                         if (select === "更新(推荐)") {
                             var luaDebugPath = this.getLocalLuaDebugPath();
@@ -67,7 +67,7 @@ export class Update {
             }
         } else {
             const importLuaDebuger = () => {
-                vscode.window.showInformationMessage("Lua调试文件缺失，是否导入 (Lua调试文件缺失将导致不能使用调试功能)", '导入', '忽略')
+                vscode.window.showWarningMessage("Lua调试文件缺失，是否导入 (Lua调试文件缺失将导致不能使用调试功能)", '导入', '忽略')
                     .then((select) => {
                         if (select === "导入") {
                             this.showImportLuaDebugerDialog(
@@ -125,7 +125,7 @@ export class Update {
 
         if (this.isLoadUnityDebug()) {
             if (this.isUnityDebugLowVersion()) {
-                vscode.window.showInformationMessage("发现Unity调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
+                vscode.window.showWarningMessage("发现Unity调试器版本更新，是否更新调试文件", '更新(推荐)', '忽略', '跳过本次更新')
                     .then((select) => {
                         if (select === "更新(推荐)") {
                             var unityDebugPath = this.getLocalUnityDebugPath();
@@ -145,7 +145,7 @@ export class Update {
             }
         } else {
             const importUnityDebuger = () => {
-                vscode.window.showInformationMessage("Unity调试文件缺失，是否导入 (非Unity项目无需导入， Unity项目缺失本调试文件将导致调试时不能获取C#变量值)", '导入', '不再提示', '忽略')
+                vscode.window.showWarningMessage("Unity调试文件缺失，是否导入 (非Unity项目无需导入， Unity项目缺失本调试文件将导致调试时不能获取C#变量值)", '导入', '不再提示', '忽略')
                     .then((select) => {
                         if (select === "导入") {
                             doImport();

@@ -2,7 +2,7 @@
     "name": "xxlua",
     "displayName": "XXLua",
     "description": "Lua language support for Visual Studio Code",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "luaDebugVersion": "1.11",
     "unityDebugVersion": "1.4",
     "publisher": "xxiong",

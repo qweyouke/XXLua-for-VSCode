@@ -6,7 +6,7 @@ const LOCAL_EXP1 = /\w+/g;
 const LOCAL_EXP2 = "[\(\[\.\:\w]";
 const LOCAL_EXP3 = "[\.\:\w]";
 const LOCAL_EXP4 = /[\"'].*?[\"']/g;
-const LOCAL_EXP5 = /--/g;
+const LOCAL_EXP5 = /^\s+$/;
 const LOCAL_EXP6 = /[\w\[\]\.]+/g;
 const PARAM_EXP = /(?<=---@param\s+)\S+/;
 const IS_NUMBER_REGEXP = /^\d+$/;
@@ -20,50 +20,90 @@ interface LineRange {
 
 //查找本地
 function findVar(lineNum: number, str: string, uniqueValues: Map<string, LineRange>, nonUniqueValues: LineRange[], isEnd: boolean): boolean {
-    if (!str.match(LOCAL_EXP5)) {
-        str = str.replace(LOCAL_EXP4, "");
-        
-        if (isEnd) {
-            var match = str.matchAll(LOCAL_EXP6);
-            if (match) {
-                for (const iterator of match) {
-                    const varName = iterator[0];
-                    if (!DebugUtil.getInstance().isFilterStr(varName) && !IS_NUMBER_REGEXP.test(varName) && !str.match(new RegExp(varName + LOCAL_EXP2))) {
-                        uniqueValues.set(varName, {
-                            lineNum: lineNum,
-                            startIdx: iterator.index ?? 0,
-                            endIdx: (iterator.index ?? 0) + varName.length,
-                            varName: varName
-                        });
-                    }
-                }
-                return true;
-            }
-        } else {
-            var isFindLocal = str.indexOf("local") !== -1 ? true : false;
-            var isFindFunction = str.indexOf("function") !== -1 ? true : false;
-            var equalIdx = str.indexOf("=");
+    //过滤注释
+    let annoIdx = str.indexOf("--");
+    if (annoIdx === 0 || (annoIdx !== -1 && LOCAL_EXP5.test(str.substring(0, annoIdx)))) {
+        return false;
+    }
+    //过滤字符串
+    str = str.replace(LOCAL_EXP4, "");
+    var strLen = str.length;
 
-            var match = str.matchAll(LOCAL_EXP1);
-            if (match) {
-                for (const iterator of match) {
-                    const varName = iterator[0];
-                    if (!DebugUtil.getInstance().isFilterStr(varName) && !str.match(new RegExp(varName + LOCAL_EXP2)) && !str.match(new RegExp(LOCAL_EXP3 + varName))) {
-                        var value = {
-                            lineNum: lineNum,
-                            startIdx: iterator.index ?? 0,
-                            endIdx: (iterator.index ?? 0) + varName.length,
-                            varName: varName
-                        };
-                        if (isFindFunction || (isFindLocal && equalIdx !== -1 && str.indexOf(varName) < equalIdx)) {
-                            nonUniqueValues.push(value);
-                        } else {
-                            uniqueValues.set(varName, value);
+    if (isEnd) {
+        var match = str.matchAll(LOCAL_EXP6);
+        if (match) {
+            for (const iterator of match) {
+                const varName = iterator[0];
+                //过滤语法字符和数字
+                if (!DebugUtil.getInstance().isFilterStr(varName) && !IS_NUMBER_REGEXP.test(varName)) {
+                    //前后各取一位组成新的字段
+                    let index = iterator.index ?? str.indexOf(varName);
+                    let minIdx = index - 1;
+                    if (minIdx < 0) {
+                        minIdx = 0;
+                    }
+                    let maxIdx = index + varName.length + 1;
+                    if (maxIdx >= strLen) {
+                        maxIdx = strLen - 1;
+                    }
+                    let content = str.substring(minIdx, maxIdx);
+                    //过滤注释后字段
+                    if ((annoIdx === -1 || annoIdx !== -1 && index < annoIdx)) {
+                        if (!content.match(new RegExp(varName + LOCAL_EXP2))) {
+                            uniqueValues.set(varName, {
+                                lineNum: lineNum,
+                                startIdx: iterator.index ?? 0,
+                                endIdx: (iterator.index ?? 0) + varName.length,
+                                varName: varName
+                            });
                         }
                     }
                 }
-                return true;
             }
+            return true;
+        }
+    } else {
+        var isFindLocal = str.indexOf("local") !== -1 ? true : false;
+        var isFindFunction = str.indexOf("function") !== -1 ? true : false;
+        var equalIdx = str.indexOf("=");
+
+        var match = str.matchAll(LOCAL_EXP1);
+        if (match) {
+            for (const iterator of match) {
+                const varName = iterator[0];
+                //过滤语法字符和数字
+                if (!DebugUtil.getInstance().isFilterStr(varName) && !IS_NUMBER_REGEXP.test(varName)) {
+
+                    //前后各取一位组成新的字段
+                    let index = iterator.index ?? str.indexOf(varName);
+                    let minIdx = index - 1;
+                    if (minIdx < 0) {
+                        minIdx = 0;
+                    }
+                    let maxIdx = index + varName.length + 1;
+                    if (maxIdx >= strLen) {
+                        maxIdx = strLen - 1;
+                    }
+                    let content = str.substring(minIdx, maxIdx);
+                    //过滤注释后字段
+                    if ((annoIdx === -1 || annoIdx !== -1 && index < annoIdx)) {
+                        if (!content.match(new RegExp(varName + LOCAL_EXP2)) && !content.match(new RegExp(LOCAL_EXP3 + varName))) {
+                            var value = {
+                                lineNum: lineNum,
+                                startIdx: index,
+                                endIdx: index + varName.length,
+                                varName: varName
+                            };
+                            if (isFindFunction || (isFindLocal && equalIdx !== -1 && index < equalIdx)) {
+                                nonUniqueValues.push(value);
+                            } else {
+                                uniqueValues.set(varName, value);
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
         }
     }
 

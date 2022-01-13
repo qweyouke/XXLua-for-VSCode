@@ -11,7 +11,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import * as readline from 'readline';
 import * as path from 'path';
 
-const WATCH_REGEXP1 = /^\s*\w+\s*[:|\.]\s*\w+\(.*?\)\s*$/;
+const WATCH_REGEXP1 = /[:|\.]\s*\w+\(.*?\)\s*$/;
 const WATCH_REGEXP2 = /^\s*#\w+/;
 const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=|\+|\-|\*|\/)\s*\w+/;
 const WATCH_REGEXP4 = /.+?\[.+?\]\s*$/;
