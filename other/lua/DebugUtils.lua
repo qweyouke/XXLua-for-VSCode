@@ -56,6 +56,12 @@ if (not setfenv) then
     end
 end
 
+local merge = function(tbA,tbB)
+    for k, v in pairs(tbB) do
+        tbA[k] = v
+    end
+end
+
 --获取table地址
 function Utils.getTbKey(var)
     if type(var) == "userdata" and Utils.isLoadedLuaDebugTool() then
@@ -264,6 +270,9 @@ function Utils.loadScopes()
     return scopeData
 end
 
+--解析c#对象为VariableData
+---@param csharpVar userdata
+---@return table<string, VariableData>
 function Utils.ParseCSharpValue(csharpVar)
 
     local varInfos = {}
@@ -382,6 +391,7 @@ function Utils.createVariable(v)
     end
 end
 
+---安全获取table变量
 function Utils.rawget(tb, key)
     -- return rawget(tb, key)
     local ret
@@ -403,6 +413,7 @@ function Utils.rawget(tb, key)
     return ret
 end
 
+---安全设置table变量
 function Utils.rawset(tb, key, value)
     xpcall(
         function()
@@ -703,7 +714,7 @@ function Utils.reloadLua(data)
         package.loaded[luaPath] = nil
         ---@diagnostic disable-next-line: undefined-field
         local realTab = Utils.require(luaPath)
-        table.merge(oldValue, realTab)
+        merge(oldValue, realTab)
 
         LuaDebug:getSupportSocket():showDialogMessage("重载成功")
     else

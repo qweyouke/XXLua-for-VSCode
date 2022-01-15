@@ -13,7 +13,7 @@ import * as path from 'path';
 
 const WATCH_REGEXP1 = /[:|\.]\s*\w+\(.*?\)\s*$/;
 const WATCH_REGEXP2 = /^\s*#\w+/;
-const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=|\+|\-|\*|\/)\s*\w+/;
+const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=|\+|\-|\*|\/|<<|>>)\s*\w+/;
 const WATCH_REGEXP4 = /.+?\[.+?\]\s*$/;
 const HOVER_SPLIT_REGEXP = /\w+/g;
 const HOVER_IS_NUMBER_REGEXP = /^\d+$/;
