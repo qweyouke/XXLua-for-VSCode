@@ -120,7 +120,7 @@ function LuaDebugOrigin:debug_hook(event, line)
                                 end
                             end
 
-                            Utils.executeScript(string.format("print(%s)", v.logMessage:sub(4, v.logMessage:len())))
+                            Utils.executeScript(string.format("print(%s)", v.logMessage))
                         end
 
                         --判断条件

@@ -186,12 +186,14 @@ function LuaDebugJit:debug_hook(event, line)
                         if v.logMessage then
                             if v.logMessage:len() >= 3 then
                                 if v.logMessage:sub(1, 3) == "###" then
-                                    print(v.logMessage:sub(4, v.logMessage:len()))
+                                    Utils.executeScript(
+                                        string.format("print(%s)", v.logMessage:sub(4, v.logMessage:len()))
+                                    )
                                     return
                                 end
                             end
 
-                            print(v.logMessage)
+                            Utils.executeScript(string.format("print(%s)", v.logMessage))
                         end
 
                         --判断条件

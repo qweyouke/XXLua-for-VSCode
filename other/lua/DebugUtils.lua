@@ -56,9 +56,9 @@ if (not setfenv) then
     end
 end
 
-local merge = function(tbA,tbB)
-    for k, v in pairs(tbB) do
-        tbA[k] = v
+local merge = function(dst,src)
+    for k, v in pairs(src) do
+        Utils.rawset(dst, k , v)
     end
 end
 
@@ -675,16 +675,18 @@ end
 ---将多个参数字符串连接起来
 function Utils.unpackStr(...)
     local arg = { ... }
-    local str = ""
     if #arg == 0 then
         arg = { "nil" }
+    else
+        for k, v in pairs(arg) do
+            local tp = type(v)
+            if tp ~= "number" and tp~= "string" then
+                arg[k] = tostring(v)
+            end
+        end
     end
 
-    for k, v in pairs(arg) do
-        str = str .. tostring(v) .. "\t"
-    end
-
-    return str
+    return table.concat(arg, "\t")
 end
 
 function Utils.xpcall(func)
@@ -700,26 +702,30 @@ end
 ---重载lua文件
 ---@param data S2C_ReloadLuaArgs
 function Utils.reloadLua(data)
-    local luaPath = data.luaPath
-    local oldValue = package.loaded[luaPath]
-    if not oldValue then
-        local idx = Utils.lastFind(luaPath, "%.")
-        if idx then
-            luaPath = luaPath:sub(idx + 1, luaPath:len())
-            oldValue = package.loaded[luaPath]
+    Utils.xpcall(
+        function ()
+            local luaPath = data.luaPath
+            local oldValue = package.loaded[luaPath]
+            if not oldValue then
+                local idx = Utils.lastFind(luaPath, "%.")
+                if idx then
+                    luaPath = luaPath:sub(idx + 1, luaPath:len())
+                    oldValue = package.loaded[luaPath]
+                end
+            end
+
+            if oldValue then
+                package.loaded[luaPath] = nil
+                ---@diagnostic disable-next-line: undefined-field
+                local realTab = Utils.require(luaPath)
+                merge(oldValue, realTab)
+
+                LuaDebug:getSupportSocket():showDialogMessage("重载成功")
+            else
+                LuaDebug:getSupportSocket():showDialogMessage("重载失败，文件未被加载", 2)
+            end
         end
-    end
-
-    if oldValue then
-        package.loaded[luaPath] = nil
-        ---@diagnostic disable-next-line: undefined-field
-        local realTab = Utils.require(luaPath)
-        merge(oldValue, realTab)
-
-        LuaDebug:getSupportSocket():showDialogMessage("重载成功")
-    else
-        LuaDebug:getSupportSocket():showDialogMessage("重载失败，文件未被加载", 2)
-    end
+    )
 end
 
 ---public 比较两个path
@@ -821,7 +827,7 @@ function Utils.executeScript(conditionStr, level)
         end,
         function(msg)
             local info = debug.getinfo(level + 3)
-            ret = "表达式错误：" .. "from [" .. info.source .. "]:" .. info.currentline .. "\n" .. msg
+            printErr("表达式错误：" .. "from [" .. info.source .. "]:" .. info.currentline .. "\n" .. msg)
         end
     )
     return ret
