@@ -1,6 +1,7 @@
 //语法额外规则配置
 import * as vscode from 'vscode';
 import { LanguageConfiguration, IndentAction } from "vscode";
+import { LANGUAGE_ID } from "../util/Define";
 
 class LuaLanguageConfiguration implements LanguageConfiguration {
     //自动添加"---""
@@ -15,5 +16,5 @@ class LuaLanguageConfiguration implements LanguageConfiguration {
 }
 
 export function init(context: vscode.ExtensionContext){
-    context.subscriptions.push(vscode.languages.setLanguageConfiguration("lua", new LuaLanguageConfiguration()));
+    context.subscriptions.push(vscode.languages.setLanguageConfiguration(LANGUAGE_ID, new LuaLanguageConfiguration()));
 }

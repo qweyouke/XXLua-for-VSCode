@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { Util } from "../util/Util";
 import { WorkspaceManager } from "../util/WorkspaceManager";
 import { CONFIG_NAME } from '../util/Define';
+import { LANGUAGE_ID } from "../util/Define";
 
 const CompletionItemKind = new Map<string, vscode.CompletionItemKind>();
 CompletionItemKind.set("Text", vscode.CompletionItemKind.Text);
@@ -155,7 +156,7 @@ export function init(context: vscode.ExtensionContext) {
             config.sort = sort.toString();
             sort++;
             
-            let provider = vscode.languages.registerCompletionItemProvider('lua', {
+            let provider = vscode.languages.registerCompletionItemProvider(LANGUAGE_ID, {
                 provideCompletionItems: function (document, position, token, context) {
                     return doCompletion(document, config);
                 },

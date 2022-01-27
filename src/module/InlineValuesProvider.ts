@@ -1,6 +1,7 @@
 //调试时变量显示在行尾
 import * as vscode from 'vscode';
 import { DebugUtil } from '../debugger/DebugUtil';
+import { LANGUAGE_ID } from "../util/Define";
 
 const LOCAL_EXP1 = /\w+/g;
 const LOCAL_EXP2 = "[\(\[\.\:\w]";
@@ -166,7 +167,7 @@ function provideInlineValues(document: vscode.TextDocument, viewPort: vscode.Ran
 }
 
 export function init(context: vscode.ExtensionContext) {
-    context.subscriptions.push(vscode.languages.registerInlineValuesProvider('lua', {
+    context.subscriptions.push(vscode.languages.registerInlineValuesProvider(LANGUAGE_ID, {
         provideInlineValues: provideInlineValues
     }));
 }

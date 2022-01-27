@@ -1,7 +1,6 @@
 //函数注释定义
 import * as vscode from 'vscode';
-
-const LANGUAGE_ID = 'lua';
+import { LANGUAGE_ID } from "../util/Define";
 
 let activeEditor: vscode.TextEditor;
 

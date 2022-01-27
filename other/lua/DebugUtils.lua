@@ -45,7 +45,7 @@ if (not setfenv) then
                     1
                 )
                 break
-            elseif not name then
+            elseif Utils.isNil(name) then
                 break
             end
 
@@ -61,6 +61,12 @@ local merge = function(dst,src)
         Utils.rawset(dst, k , v)
     end
 end
+
+local tablePack = table.pack or function(...)
+   return {...} 
+end
+
+local tableUnpack = table.unpack or unpack
 
 --获取table地址
 function Utils.getTbKey(var)
@@ -181,7 +187,7 @@ local function getStackValue(f)
     -- get locals
     while true do
         local name, value = debug.getlocal(f, i)
-        if not name then
+        if Utils.isNil(name) then
             break
         end
 
@@ -197,7 +203,7 @@ local function getStackValue(f)
     local ups = {}
     while func do -- check for func as it may be nil for tail calls
         local name, value = debug.getupvalue(func, i)
-        if not name then
+        if Utils.isNil(name) then
             break
         end
 
@@ -219,7 +225,7 @@ function Utils.getStackInfo(ignoreCount, isFindVar)
     local ret = {}
     for i = ignoreCount, 100 do
         local source = debug.getinfo(i)
-        if not source then
+        if Utils.isNil(source) then
             break
         end
 
@@ -320,7 +326,7 @@ function Utils.filterSpecChar(s)
         end
 
         local c = string.byte(s, k)
-        if not c then
+        if Utils.isNil(c) then
             break
         end
 
@@ -394,6 +400,9 @@ end
 ---安全获取table变量
 function Utils.rawget(tb, key)
     -- return rawget(tb, key)
+    if key == nil then
+        return nil
+    end
     local ret
     xpcall(
         function()
@@ -436,6 +445,7 @@ end
 ---@public
 ---获取变量
 function Utils.getVariable(path)
+    -- print("getVariable", path)
     local scopeInfo = LuaDebug:getScopeInfo()
     local ret = { type = "nil", var = "nil" }
     local realPath = path
@@ -457,14 +467,14 @@ function Utils.getVariable(path)
                     if newVar then
                         if type(newVar) == "table" then
                             for k2, v2 in pairs(newVar) do
-                                if not Utils.rawget(tb, k2) then
+                                if Utils.isNil(Utils.rawget(tb, k2)) then
                                     Utils.rawset(tb, k2, v2)
                                 end
                             end
 
                             loadExtraVar(newVar, tb)
                         else
-                            if not Utils.rawget(tb, v) then
+                            if Utils.isNil(Utils.rawget(tb, v)) then
                                 Utils.rawset(tb, v, newVar)
                             end
                         end
@@ -473,21 +483,28 @@ function Utils.getVariable(path)
             end
 
             local function getVar(var, k)
-                if not var then
+                if Utils.isNil(var) then
                     return nil
                 end
 
                 if type(var) == "table" then
+                    -- print(type(k),k)
+                    -- print("正常查询")
+                    --正常查询
                     local v = Utils.rawget(var, k)
-                    if not v then
+                    if Utils.isNil(v) then
+                        v = Utils.rawget(var, tonumber(k))
+                    end
+
+                    --查询扩展数据
+                    if Utils.isNil(v) then
+                        -- print("查询扩展数据")
                         local tb = {}
                         loadExtraVar(var, tb)
                         v = tb[k]
-                    end
-
-                    if not v then
-                        k = tonumber(k)
-                        v = Utils.rawget(var, k)
+                        if not v then
+                            v = tb[tonumber(k)]
+                        end
                     end
 
                     return v
@@ -512,7 +529,6 @@ function Utils.getVariable(path)
                             if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
                                 tbkey = Utils.getTbKey(nextVar)
                             end
-
                             var = nextVar
                         end
                     else
@@ -540,9 +556,8 @@ function Utils.getVariable(path)
                     { k = "invalid", v = vars.invalid }
                 }
                 for k, v in ipairs(varTb) do
-                    -- dump(v)
                     var, tbkey = findVar(v.v)
-                    if var then
+                    if not Utils.isNil(var) then
                         realPath = v.k .. "-" .. path
                         break
                     end
@@ -550,7 +565,7 @@ function Utils.getVariable(path)
             end
 
             local realVar = var
-            if realVar then
+            if not Utils.isNil(realVar) then
                 if type(realVar) == "table" then
                     ret = { type = "table", var = {} }
                     for k, v in pairs(realVar) do
@@ -589,13 +604,13 @@ function Utils.watchVariable(exp)
     end
 
     for k, v in pairs(vars.ups) do
-        if not env[k] then
+        if Utils.isNil(env[k]) then
             env[k] = v
         end
     end
 
     for k, v in pairs(vars.global) do
-        if not env[k] then
+        if Utils.isNil(env[k]) then
             env[k] = v
         end
     end
@@ -638,7 +653,7 @@ function Utils.findExtraVars(ret, var)
         if newVar then
             if type(newVar) == "table" then
                 for k, v in pairs(newVar) do
-                    if not cacheKeys[k] then
+                    if Utils.isNil(cacheKeys[k]) then
                         local newKey
                         if prefix then
                             newKey = k .. " [" .. prefix .. "." .. key .. "]"
@@ -652,7 +667,7 @@ function Utils.findExtraVars(ret, var)
                 end
 
                 getExtraVars(newVar, key, prefix and prefix .. "." .. key or key)
-            elseif not cacheKeys[key] then
+            elseif Utils.isNil(cacheKeys[key]) then
                 local newKey
                 if prefix then
                     newKey = key .. " [" .. prefix .. "." .. key .. "]"
@@ -674,18 +689,27 @@ end
 
 ---将多个参数字符串连接起来
 function Utils.unpackStr(...)
-    local arg = { ... }
+    local arg = tablePack(...)
     if #arg == 0 then
         arg = { "nil" }
     else
         for k, v in pairs(arg) do
-            local tp = type(v)
-            if tp ~= "number" and tp~= "string" then
-                arg[k] = tostring(v)
+            if v == nil then
+                arg[k] = "nil"
+            else
+                local tp = type(v)
+                if tp ~= "number" and tp~= "string" then
+                    arg[k] = tostring(v)
+                end
             end
         end
     end
-
+    local sIdx = next(arg)
+    for i = 1, sIdx do
+        if arg[i] == nil then
+            arg[i] = "nil"
+        end
+    end
     return table.concat(arg, "\t")
 end
 
@@ -706,7 +730,7 @@ function Utils.reloadLua(data)
         function ()
             local luaPath = data.luaPath
             local oldValue = package.loaded[luaPath]
-            if not oldValue then
+            if Utils.isNil(oldValue) then
                 local idx = Utils.lastFind(luaPath, "%.")
                 if idx then
                     luaPath = luaPath:sub(idx + 1, luaPath:len())
@@ -806,14 +830,14 @@ function Utils.executeScript(conditionStr, level)
 
     if (ups) then
         for k, v in pairs(ups) do
-            if not env[k] then
+            if Utils.isNil(env[k]) then
                 env[k] = v
             end
         end
     end
 
     for k, v in pairs(global) do
-        if not env[k] then
+        if Utils.isNil(env[k]) then
             env[k] = v
         end
     end

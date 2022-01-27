@@ -27,3 +27,5 @@ export const LOCAL_DATA_NAME = {
     //是否禁用unity调试
     isDisableUnityDebug: "isDisableUnityDebug"
 };
+
+export const LANGUAGE_ID = "lua";
