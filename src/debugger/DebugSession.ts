@@ -560,11 +560,16 @@ export class DebugSession extends LoggingDebugSession {
                     variablesReference: scopeData.globalStartRefID,
                     expensive: false
                 },
-                    // {
-                    //     name: "Invalid",
-                    //     variablesReference: scopeData.invalidStartRefID,
-                    //     expensive: false
-                    // },
+                // {
+                //     name: "Invalid",
+                //     variablesReference: scopeData.invalidStartRefID,
+                //     expensive: false
+                // },
+                // {
+                //     name: "Watch",
+                //     variablesReference: scopeData.watchStartRefID,
+                //     expensive: false
+                // },
                 ]
             };
 

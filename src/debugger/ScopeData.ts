@@ -3,10 +3,11 @@
 import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { Handles } from 'vscode-debugadapter';
-import { CMD_C2D_GetScopes, CMD_C2D_GetVariable, CMD_C2D_WatchVariable, VariableData, VariablePathData } from './DebugData';
+import { CMD_C2D_GetScopes, CMD_C2D_GetVariable, VariableData, VariablePathData } from './DebugData';
 export var TABLE = "table";
 
 const REPLACE_EXTRA_REGEXP = /\s{1}\[.*?\]/;
+const STRUCT_LIST = ["locals", "watch", "ups", "global", "invalid"];
 
 export class ScopeData {
     core: DebugSession;
@@ -25,6 +26,9 @@ export class ScopeData {
     upsStartRefID: number;
     globalStartRefID: number;
     invalidStartRefID: number;
+    watchStartRefID: number;
+
+
 
     constructor(data: CMD_C2D_GetScopes, core: DebugSession) {
 
@@ -41,6 +45,7 @@ export class ScopeData {
         this.upsStartRefID = 0;
         this.globalStartRefID = 0;
         this.invalidStartRefID = 0;
+        this.watchStartRefID = 0;
 
         this.initStruct();
     }
@@ -50,11 +55,13 @@ export class ScopeData {
         this.upsStartRefID = this.createRef(this.data.struct.ups);
         this.globalStartRefID = this.createRef(this.data.struct.global);
         this.invalidStartRefID = this.createRef(this.data.struct.invalid);
+        this.watchStartRefID = this.createRef(this.data.struct.watch);
 
         this.addPath("locals", this.data.struct.locals);
         this.addPath("ups", this.data.struct.ups);
         this.addPath("global", this.data.struct.global);
         this.addPath("invalid", this.data.struct.invalid);
+        this.addPath("watch", this.data.struct.watch);
     }
 
     //创建table唯一id
@@ -110,7 +117,7 @@ export class ScopeData {
         let pathData = this.mLoadedPaths.get(path);
         if (!pathData) {
             //不是传的全路径， 则从全路径缓存中去找值
-            for (const prefixKey in this.data.struct) {
+            for (const prefixKey of STRUCT_LIST) {
                 pathData = this.mLoadedPaths.get(prefixKey + "-" + path);
                 if (pathData) {
                     break;
