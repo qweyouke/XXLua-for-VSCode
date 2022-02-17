@@ -114,7 +114,12 @@ export class ScopeData {
 
     //通过路径获取变量
     getVariableByPath(path: string): VariableData | undefined {
-        let pathData = this.mLoadedPaths.get(path);
+        let pathData: VariablePathData | undefined = undefined;
+        
+        if (STRUCT_LIST.indexOf(path) === -1) {
+            pathData = this.mLoadedPaths.get(path);
+        }
+            
         if (!pathData) {
             //不是传的全路径， 则从全路径缓存中去找值
             for (const prefixKey of STRUCT_LIST) {

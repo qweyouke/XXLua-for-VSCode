@@ -58,7 +58,7 @@ export class AttachDebugSession extends DebugSession {
 
 
             }).on('error', error => {
-                this.printConsole("Connecting to the attach server error!", 2);
+                this.printConsole("Connecting to the attach server error!" + error, 2);
                 sock.destroy();
                 
                 if (!port) {

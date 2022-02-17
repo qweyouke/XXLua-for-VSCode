@@ -1,5 +1,5 @@
 # XXLua 
-XXLua是一款基于vscode制作的lua编辑和调试插件，主要功能如下
+XXLua是一款基于vscode制作的针对lua5.1-5.4及luaJit的编辑和调试插件。主要功能如下
 - Lua代码调试
 - 支持远程调试
 - 支持条件断点
