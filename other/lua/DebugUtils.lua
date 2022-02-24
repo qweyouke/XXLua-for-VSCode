@@ -5,8 +5,6 @@ local Utils = {}
 local filePathCachePaths = {}
 local compareStrCache = {}
 local compareCache = {}
----@diagnostic disable-next-line: deprecated
-local loadstring = loadstring or load
 local CSHARP_BASE_VALUE = {
     ["System.Boolean"] = "boolean",
     ["System.Char"] = "string",
@@ -28,6 +26,9 @@ local CSHARP_BASE_VALUE = {
     ["null"] = "nil",
 }
 
+---@diagnostic disable-next-line: deprecated
+local loadstring = loadstring or load
+
 local setfenv = setfenv
 if (not setfenv) then
     --lua5.1以上没有这个函数了
@@ -37,7 +38,7 @@ if (not setfenv) then
             local name = debug.getupvalue(fn, i)
             if name == "_ENV" then
                 debug.upvaluejoin(
-                    fn,
+                fn,
                     i,
                     (function()
                         return env
@@ -56,17 +57,51 @@ if (not setfenv) then
     end
 end
 
-local merge = function(dst,src)
+--合并两个table
+local tableMerge = function(dst, src)
     for k, v in pairs(src) do
-        Utils.rawset(dst, k , v)
+        Utils.rawset(dst, k, v)
     end
 end
 
+--参数合并table
 local tablePack = table.pack or function(...)
-   return {...} 
+    return { ... }
 end
 
+--table拆成参数
 local tableUnpack = table.unpack or unpack
+
+---分割字符串
+---@param text string 需要分割字符串
+---@param sep string 匹配字符串，支持模式匹配
+---@param plain boolean 是否开启模式匹配，默认关闭，可省略
+---@param base_zero boolean 返回数组是否按照下标0位开始，默认下标1位开始，可省略
+---@return string[]
+local strSplit = function(text, sep, plain, base_zero)
+    ---@type string[]
+    local result = {}
+    if (text and type(text) == type("")) then
+        local searchPos = 1
+        local idx = base_zero and 0 or 1
+        while true do
+            local matchStart, matchEnd = string.find(text, sep, searchPos, plain)
+            if matchStart and matchEnd >= matchStart then
+                -- insert string up to separator into result
+                result[idx] = string.sub(text, searchPos, matchStart - 1)
+                idx = idx + 1
+                -- continue search after separator
+                searchPos = matchEnd + 1
+            else
+                -- insert whole reminder as result
+                result[idx] = string.sub(text, searchPos)
+                break
+            end
+        end
+    end
+
+    return result
+end
 
 --获取table地址
 function Utils.getTbKey(var)
@@ -110,10 +145,10 @@ function Utils.isLoadedLuaDebugTool()
     if tool then
         local ret
         xpcall(
-            function()
-                tool.GetTbKey("")
-                ret = true
-            end,
+        function()
+            tool.GetTbKey("")
+            ret = true
+        end,
             function()
                 ret = false
             end
@@ -403,16 +438,17 @@ function Utils.rawget(tb, key)
     if key == nil then
         return nil
     end
+
     local ret
     xpcall(
-        function()
-            ret = tb[key]
-        end,
+    function()
+        ret = tb[key]
+    end,
         function()
             xpcall(
-                function()
-                    ret = tb[tonumber(key)]
-                end,
+            function()
+                ret = tb[tonumber(key)]
+            end,
                 function()
                     ret = rawget(tb, key)
                 end
@@ -425,14 +461,14 @@ end
 ---安全设置table变量
 function Utils.rawset(tb, key, value)
     xpcall(
-        function()
-            tb[key] = value
-        end,
+    function()
+        tb[key] = value
+    end,
         function()
             xpcall(
-                function()
-                    tb[tonumber(key)] = value
-                end,
+            function()
+                tb[tonumber(key)] = value
+            end,
                 function()
                     rawset(tb, key, value)
                 end
@@ -455,135 +491,137 @@ function Utils.getVariable(path)
     end
 
     Utils.xpcall(
-        function()
-            local frameId = LuaDebug:getCurrentFrameId()
-            local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
-            local debugData = LuaDebug:getDebugData()
+    function()
+        local frameId = LuaDebug:getCurrentFrameId()
+        local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
+        local debugData = LuaDebug:getDebugData()
 
-            local loadExtraVar
-            loadExtraVar = function(var, tb)
-                for i, v in ipairs(debugData.externalVariables) do
-                    local newVar = Utils.rawget(var, v)
-                    if newVar then
-                        if type(newVar) == "table" then
-                            for k2, v2 in pairs(newVar) do
-                                if Utils.isNil(Utils.rawget(tb, k2)) then
-                                    Utils.rawset(tb, k2, v2)
-                                end
+        local loadExtraVar
+        loadExtraVar = function(var, tb)
+            for i, v in ipairs(debugData.externalVariables) do
+                local newVar = Utils.rawget(var, v)
+                if newVar then
+                    if type(newVar) == "table" then
+                        for k2, v2 in pairs(newVar) do
+                            if Utils.isNil(Utils.rawget(tb, k2)) then
+                                Utils.rawset(tb, k2, v2)
                             end
+                        end
 
-                            loadExtraVar(newVar, tb)
-                        else
-                            if Utils.isNil(Utils.rawget(tb, v)) then
-                                Utils.rawset(tb, v, newVar)
-                            end
+                        loadExtraVar(newVar, tb)
+                    else
+                        if Utils.isNil(Utils.rawget(tb, v)) then
+                            Utils.rawset(tb, v, newVar)
                         end
                     end
                 end
             end
+        end
 
-            local function getVar(var, k)
-                if Utils.isNil(var) then
-                    return nil
-                end
-
-                if type(var) == "table" then
-                    -- print(type(k),k)
-                    -- print("正常查询")
-                    --正常查询
-                    local v = Utils.rawget(var, k)
-                    if Utils.isNil(v) then
-                        v = Utils.rawget(var, tonumber(k))
-                    end
-
-                    --查询扩展数据
-                    if Utils.isNil(v) then
-                        -- print("查询扩展数据")
-                        local tb = {}
-                        loadExtraVar(var, tb)
-                        v = tb[k]
-                        if not v then
-                            v = tb[tonumber(k)]
-                        end
-                    end
-
-                    return v
-                elseif Utils.isCSharpTable(var) and Utils.isLoadedLuaDebugTool() then
-                    return CS.LuaDebugTool.GetCSharpValue(var, k)
-                end
-
+        local function getVar(var, k)
+            if Utils.isNil(var) then
                 return nil
             end
 
-            local paths = path:split("-")
-            local function findVar(var)
-                local tbkey = Utils.getTbKey(var)
-                for k, v in ipairs(paths) do
-                    local nextVar = getVar(var, v)
-                    if not Utils.isNil(nextVar) then
-                        if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
-                            var = nil
-                            tbkey = nil
-                            break
-                        else
-                            if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
-                                tbkey = Utils.getTbKey(nextVar)
-                            end
-                            var = nextVar
-                        end
-                    else
-                        var = nil
-                        tbkey = nil
-                        break
+            if type(var) == "table" then
+                -- print(type(k),k)
+                -- print("正常查询")
+                --正常查询
+                local v = Utils.rawget(var, k)
+                if Utils.isNil(v) then
+                    v = Utils.rawget(var, tonumber(k))
+                end
+
+                --查询扩展数据
+                if Utils.isNil(v) then
+                    -- print("查询扩展数据")
+                    local tb = {}
+                    loadExtraVar(var, tb)
+                    v = tb[k]
+                    if not v then
+                        v = tb[tonumber(k)]
                     end
                 end
 
-                return var, tbkey
+                return v
+            elseif Utils.isCSharpTable(var) and Utils.isLoadedLuaDebugTool() then
+                return CS.LuaDebugTool.GetCSharpValue(var, k)
             end
 
-            local isFindOgiPath = scopeInfo.struct[paths[1]] and true or false
-            local var
-            local tbkey
-            if isFindOgiPath then
-                var, tbkey = findVar(vars)
-            else
-                --重新构造table，以定义查找顺序
-                local varTb = {
+            return nil
+        end
+
+        local paths = strSplit(path, "-")
+        local function findVar(var)
+            local tbkey = Utils.getTbKey(var)
+            for k, v in ipairs(paths) do
+                local nextVar = getVar(var, v)
+                if not Utils.isNil(nextVar) then
+                    if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
+                        var = nil
+                        tbkey = nil
+                        break
+                    else
+                        if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
+                            tbkey = Utils.getTbKey(nextVar)
+                        end
+
+                        var = nextVar
+                    end
+                else
+                    var = nil
+                    tbkey = nil
+                    break
+                end
+            end
+
+            return var, tbkey
+        end
+
+        local isFindOgiPath = scopeInfo.struct[paths[1]] and true or false
+        local var
+        local tbkey
+        if isFindOgiPath then
+            var, tbkey = findVar(vars)
+        else
+            --重新构造table，以定义查找顺序
+            local varTb = {
                     { k = "locals", v = vars.locals },
                     { k = "ups", v = vars.ups },
                     { k = "global", v = vars.global },
                     { k = "watch", v = vars.watch },
                     { k = "invalid", v = vars.invalid }
-                }
-                for k, v in ipairs(varTb) do
-                    var, tbkey = findVar(v.v)
-                    if not Utils.isNil(var) then
-                        realPath = v.k .. "-" .. path
-                        break
-                    end
+            }
+            for k, v in ipairs(varTb) do
+                var, tbkey = findVar(v.v)
+                -- print(v.k, var)
+                if not Utils.isNil(var) then
+                    realPath = v.k .. "-" .. path
+                    break
                 end
-            end
-
-            local realVar = var
-            if not Utils.isNil(realVar) then
-                if type(realVar) == "table" then
-                    ret = { type = "table", var = {} }
-                    for k, v in pairs(realVar) do
-                        ret.var[tostring(k)] = Utils.createVariable(v)
-                    end
-
-                    Utils.findExtraVars(ret.var, realVar)
-                elseif Utils.isCSharpTable(realVar) then
-                    ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
-                elseif type(realVar) == "userdata" then
-                    ret = { type = CSHARP_BASE_VALUE[realVar:GetType():ToString()], var = realVar:ToString() }
-                else
-                    ret = Utils.createVariable(realVar)
-                end
-
-                retTbkey = tbkey
             end
         end
+
+        local realVar = var
+        if not Utils.isNil(realVar) then
+            if type(realVar) == "table" then
+                ret = { type = "table", var = {} }
+                for k, v in pairs(realVar) do
+                    ret.var[tostring(k)] = Utils.createVariable(v)
+                end
+
+                Utils.findExtraVars(ret.var, realVar)
+            elseif Utils.isCSharpTable(realVar) then
+                ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
+            elseif type(realVar) == "userdata" then
+                ret = { type = CSHARP_BASE_VALUE[realVar:GetType():ToString()], var = realVar:ToString() }
+            else
+                ret = Utils.createVariable(realVar)
+            end
+
+            retTbkey = tbkey
+        end
+    end
     )
     -- dump(ret, "retTbkey", 3)
 
@@ -617,10 +655,10 @@ function Utils.watchVariable(exp)
 
     local ret
     xpcall(
-        function()
-            setfenv(fun, env)
-            ret = { fun() }
-        end,
+    function()
+        setfenv(fun, env)
+        ret = { fun() }
+    end,
         function(msg)
             ret = nil
         end
@@ -698,24 +736,26 @@ function Utils.unpackStr(...)
                 arg[k] = "nil"
             else
                 local tp = type(v)
-                if tp ~= "number" and tp~= "string" then
+                if tp ~= "number" and tp ~= "string" then
                     arg[k] = tostring(v)
                 end
             end
         end
     end
+
     local sIdx = next(arg)
     for i = 1, sIdx do
         if arg[i] == nil then
             arg[i] = "nil"
         end
     end
+
     return table.concat(arg, "\t")
 end
 
 function Utils.xpcall(func)
     xpcall(
-        func,
+    func,
         function(msg)
             printErr(msg .. "\n" .. debug.traceback())
         end
@@ -727,28 +767,28 @@ end
 ---@param data S2C_ReloadLuaArgs
 function Utils.reloadLua(data)
     Utils.xpcall(
-        function ()
-            local luaPath = data.luaPath
-            local oldValue = package.loaded[luaPath]
-            if Utils.isNil(oldValue) then
-                local idx = Utils.lastFind(luaPath, "%.")
-                if idx then
-                    luaPath = luaPath:sub(idx + 1, luaPath:len())
-                    oldValue = package.loaded[luaPath]
-                end
-            end
-
-            if oldValue then
-                package.loaded[luaPath] = nil
-                ---@diagnostic disable-next-line: undefined-field
-                local realTab = Utils.require(luaPath)
-                merge(oldValue, realTab)
-
-                LuaDebug:getSupportSocket():showDialogMessage("重载成功")
-            else
-                LuaDebug:getSupportSocket():showDialogMessage("重载失败，文件未被加载", 2)
+    function()
+        local luaPath = data.luaPath
+        local oldValue = package.loaded[luaPath]
+        if Utils.isNil(oldValue) then
+            local idx = Utils.lastFind(luaPath, "%.")
+            if idx then
+                luaPath = luaPath:sub(idx + 1, luaPath:len())
+                oldValue = package.loaded[luaPath]
             end
         end
+
+        if oldValue then
+            package.loaded[luaPath] = nil
+            ---@diagnostic disable-next-line: undefined-field
+            local realTab = Utils.require(luaPath)
+            tableMerge(oldValue, realTab)
+
+            LuaDebug:getSupportSocket():showDialogMessage("重载成功")
+        else
+            LuaDebug:getSupportSocket():showDialogMessage("重载失败，文件未被加载", 2)
+        end
+    end
     )
 end
 
@@ -768,7 +808,7 @@ function Utils.comparePath(path1, path2)
             path1Tb = cache[1]
             path1Len = cache[2]
         else
-            path1Tb = path1:split("/")
+            path1Tb = strSplit(path1, "/")
             path1Len = #path1Tb
             cache = {
                 path1Tb,
@@ -782,7 +822,7 @@ function Utils.comparePath(path1, path2)
             path2Tb = cache[1]
             path2Len = cache[2]
         else
-            path2Tb = path2:split("/")
+            path2Tb = strSplit(path2, "/")
             path2Len = #path2Tb
             cache = {
                 path2Tb,
@@ -845,10 +885,10 @@ function Utils.executeScript(conditionStr, level)
     local fun = loadstring("return " .. conditionStr)
 
     xpcall(
-        function()
-            setfenv(fun, env)
-            ret = fun()
-        end,
+    function()
+        setfenv(fun, env)
+        ret = fun()
+    end,
         function(msg)
             local info = debug.getinfo(level + 3)
             printErr("表达式错误：" .. "from [" .. info.source .. "]:" .. info.currentline .. "\n" .. msg)

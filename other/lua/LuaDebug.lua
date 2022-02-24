@@ -16,31 +16,39 @@ local require = realRequire or require
 
 --前缀路径
 local _prefixPath
-local _rootName
+local _fullPrefixPath
+--已加载文件
+local loaded = {}
 
 do
     local xxlua_require = function(path)
-        if _prefixPath then
-            local path = _prefixPath .. path
-            local fullPath = _rootName .. path
-            local ret
-            local isError
-            xpcall(
-                function()
-                    ret = require(path)
-                end,
-                function()
-                    isError = true
-                    ret = require(fullPath)
-                end
-            )
-            if not ret and not isError then
-                ret = require(fullPath)
-            end
-            return ret
-        else
-            return require(path)
+        if loaded[path] then
+            return loaded[path]
         end
+        local paths = {}
+        if _prefixPath then
+            table.insert(paths, _prefixPath .. path)
+        end
+        if _fullPrefixPath then
+            table.insert(paths, _fullPrefixPath .. path)
+        end
+        table.insert(paths, path)
+
+        
+        local ret
+        local idx = 1
+        local len = #paths
+        while idx <= len and not ret do
+            pcall(
+                function()
+                    ret = require(paths[idx])
+            end)
+            idx = idx + 1
+        end
+        if ret then
+            loaded[path] = ret
+        end
+        return ret
     end
 
     xpcall(
@@ -66,8 +74,10 @@ return function(host, port)
         _prefixPath = source:sub(firstIdx + 1, lastIdx)
         if _prefixPath == "" then
             _prefixPath = nil
-        else
-            _rootName = source:sub(1, firstIdx)
+        end
+        _fullPrefixPath = source:sub(1, lastIdx)
+        if _fullPrefixPath == "" then
+            _fullPrefixPath = nil
         end
     end
 
