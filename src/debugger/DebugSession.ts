@@ -134,9 +134,8 @@ export class DebugSession extends LoggingDebugSession {
 
         await new Promise((resolve, reject) => {
             this.mDebugData = args;
-            let localHost = DebugUtil.getInstance().getIPAdress();
             if (this.mDebugData.clientHost === "localhost") {
-                this.mDebugData.clientHost = localHost;
+                this.mDebugData.clientHost = "127.0.0.1";
             }
             if (this.mLuaRoot) {
                 this.mDebugData.localRoot = this.mLuaRoot;
@@ -152,7 +151,7 @@ export class DebugSession extends LoggingDebugSession {
                     })
                         .listen(args.port)
                         .on('listening', () => {
-                            this.printConsole(`The debugger(${localHost}:${args.port}) is ready, wait for client's connection...`);
+                            this.printConsole(`The debugger(${DebugUtil.getInstance().getIPAdress()}:${args.port}) is ready, wait for client's connection...`);
                             this.onCreateServerSuccess();
                         })
                         .on('error', err => {
