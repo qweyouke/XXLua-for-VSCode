@@ -14,6 +14,7 @@ local CSHARP_BASE_VALUE = {
     ["System.Int64"] = "number",
     ["System.IntPtr"] = "number",
     ["System.Byte"] = "number",
+    ["System.Byte[]"] = "string",
     ["System.SByte"] = "number",
     ["System.UInt16"] = "number",
     ["System.UInt32"] = "number",
@@ -25,7 +26,6 @@ local CSHARP_BASE_VALUE = {
     ["Method"] = "function",
     ["null"] = "nil",
 }
-
 ---@diagnostic disable-next-line: deprecated
 local loadstring = loadstring or load
 
