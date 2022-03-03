@@ -8,6 +8,7 @@ xxlua_require("DebugFunctions")
 ---@field private m_host string ip
 ---@field private m_port number 端口
 ---@field private m_loop_coroutine thread 主循环协程
+---@field private m_hook_func fun(event:string, line:number) 钩子函数
 ---@field private m_debugSocket DebugClient 调试socket
 ---@field private m_supportSocket DebugClient 辅助socket
 ---@field private m_attachServer DebugServer 附加服务器 用于中途附加调试
@@ -28,6 +29,36 @@ local DebugBase = xxlua_require("DebugClass")("DebugBase")
 
 local _yield = coroutine.yield
 local _resume = coroutine.resume
+coroutine.resume = function(co, ...)
+    if coroutine.status(co) ~= "dead" then
+        debug.sethook(co, LuaDebug:getHookFunc(), "lrc")
+    end
+    return _resume(co, ...)
+end
+local _wrap = coroutine.wrap
+coroutine.wrap = function(fun)
+    local newFun = _wrap(function()
+        debug.sethook(LuaDebug:getHookFunc(), "lrc")
+        return fun();
+    end)
+    return newFun
+end
+local _sethook = debug.sethook
+debug.sethook = function(...)
+    local debugHook = LuaDebug:getHookFunc()
+    local args = { ... }
+
+    if debugHook then
+        local newHook = (args[1] and type(args[1]) == "function") and args[1] or args[2]
+        if newHook and newHook ~= debugHook then
+            printWarn(debug.traceback("Setting hook functions outside the debugger has invalidated the debugger",2))
+        end
+    end
+
+    _sethook(...)
+end
+
+
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
 ---@type Protocol
@@ -130,6 +161,13 @@ function DebugBase:getBreakPoints()
     return self.m_breakPoints
 end
 
+---@public
+---获取钩子函数
+---@return fun(event:string, line:number)
+function DebugBase:getHookFunc()
+    return self.m_hook_func
+end
+
 ---@private
 ---设置断点信息
 ---@param data S2C_SetBreakpointsArgs
@@ -182,13 +220,15 @@ end
 ---@protected
 ---设置调试hook
 function DebugBase:debugger_initDebugHook()
-    debug.sethook(handler(self, self.debug_hook), "lrc")
+    self.m_hook_func = handler(self, self.debug_hook)
+    debug.sethook(self.m_hook_func, "lrc")
 end
 
 ---@private
 ---设置附加服务器hook
 function DebugBase:debugger_initAttachServerHook()
-    debug.sethook(handler(self, self.tryAcceptAttachServer), "lrc")
+    self.m_hook_func = handler(self, self.tryAcceptAttachServer)
+    debug.sethook(self.m_hook_func, "lrc")
 end
 
 ---@private
