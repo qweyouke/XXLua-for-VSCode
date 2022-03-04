@@ -24,6 +24,11 @@ export class Util {
     //递归读取目录下的所有文件
     public readDir(dirPath: string, dirs: string[] = [], curDir: string = ""): string[] {
         dirPath = dirPath.replace(new RegExp("\\\\", 'gm'), "/");
+
+        let lastChar = dirPath.substring(dirPath.length-1);
+        if (lastChar !== "/") {
+            dirPath = dirPath + "/";
+        }
         let realPath = dirPath + curDir;
         let isRecursion = dirs === undefined ? false : true;
         dirs = dirs === undefined ? [] : dirs;

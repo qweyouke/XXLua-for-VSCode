@@ -25,6 +25,8 @@ function checkTemplateFolder() {
                             let lastPath = importPath.substring(idx + 1, importPath.length);
                             if (lastPath !== "Template") {
                                 importPath = importPath + "\\Template\\";
+                            } else {
+                                importPath = importPath + "\\";
                             }
                         }
 
