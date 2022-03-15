@@ -2,7 +2,7 @@
     "name": "xxlua",
     "displayName": "XXLua",
     "description": "Lua language support for Visual Studio Code",
-    "version": "1.0.24",
+    "version": "1.0.26",
     "luaDebugVersion": "1.16",
     "unityDebugVersion": "1.4",
     "publisher": "xxiong",
@@ -29,8 +29,7 @@
     },
     "main": "./out/Extension.js",
     "contributes": {
-        "commands": [
-            {
+        "commands": [{
                 "command": "XXLua.reloadLua",
                 "title": "[XXLua] 调试时重新加载Lua文件"
             },
@@ -60,8 +59,7 @@
             }
         ],
         "menus": {
-            "editor/context": [
-                {
+            "editor/context": [{
                     "when": "editorFocus && resourceLangId == lua",
                     "command": "XXLua.reloadLua",
                     "group": "xxiong@101"
@@ -72,8 +70,7 @@
                     "group": "xxiong@102"
                 }
             ],
-            "explorer/context": [
-                {
+            "explorer/context": [{
                     "when": "resourceLangId == lua",
                     "command": "XXLua.reloadLua",
                     "group": "xxiong@101"
@@ -105,37 +102,29 @@
                 }
             ]
         },
-        "languages": [
-            {
-                "id": "lua",
-                "extensions": [
-                    ".lua"
-                ],
-                "aliases": [
-                    "Lua",
-                    "lua"
-                ],
-                "configuration": "./language/language-configuration.json"
-            }
-        ],
-        "grammars": [
-            {
-                "language": "lua",
-                "scopeName": "source.lua",
-                "path": "./syntaxes/lua.json"
-            }
-        ],
-        "breakpoints": [
-            {
-                "language": "lua"
-            }
-        ],
-        "snippets": [
-            {
-                "language": "lua",
-                "path": "./snippets/snippets.json"
-            }
-        ],
+        "languages": [{
+            "id": "lua",
+            "extensions": [
+                ".lua"
+            ],
+            "aliases": [
+                "Lua",
+                "lua"
+            ],
+            "configuration": "./language/language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "lua",
+            "scopeName": "source.lua",
+            "path": "./syntaxes/lua.json"
+        }],
+        "breakpoints": [{
+            "language": "lua"
+        }],
+        "snippets": [{
+            "language": "lua",
+            "path": "./snippets/snippets.json"
+        }],
         "configuration": {
             "title": "XXLua",
             "properties": {
@@ -189,8 +178,7 @@
                 }
             }
         },
-        "debuggers": [
-            {
+        "debuggers": [{
                 "type": "XXLua_attach_lua",
                 "label": "XXLua_Attach",
                 "program": "./out/debugger/AttachDebugAdapter.js",
@@ -251,8 +239,27 @@
                         }
                     }
                 },
-                "initialConfigurations": [
-                    {
+                "initialConfigurations": [{
+                    "name": "XXLua_Attach_Debugger",
+                    "type": "XXLua_attach_lua",
+                    "request": "attach",
+                    "clientHost": "localhost",
+                    "port": 8896,
+                    "printType": 1,
+                    "externalVariables": [
+                        "super",
+                        "_super",
+                        "__super"
+                    ],
+                    "filterFiles": [
+                        "Core/Utils/lazyRequire.lua",
+                        "Core/Class/ClassCreatorCopy.lua"
+                    ]
+                }],
+                "configurationSnippets": [{
+                    "label": "XXLua_Attach_Debugger",
+                    "description": "XXLua Attach调试器",
+                    "body": {
                         "name": "XXLua_Attach_Debugger",
                         "type": "XXLua_attach_lua",
                         "request": "attach",
@@ -269,30 +276,7 @@
                             "Core/Class/ClassCreatorCopy.lua"
                         ]
                     }
-                ],
-                "configurationSnippets": [
-                    {
-                        "label": "XXLua_Attach_Debugger",
-                        "description": "XXLua Attach调试器",
-                        "body": {
-                            "name": "XXLua_Attach_Debugger",
-                            "type": "XXLua_attach_lua",
-                            "request": "attach",
-                            "clientHost": "localhost",
-                            "port": 8896,
-                            "printType": 1,
-                            "externalVariables": [
-                                "super",
-                                "_super",
-                                "__super"
-                            ],
-                            "filterFiles": [
-                                "Core/Utils/lazyRequire.lua",
-                                "Core/Class/ClassCreatorCopy.lua"
-                            ]
-                        }
-                    }
-                ],
+                }],
                 "languages": [
                     "lua"
                 ]
@@ -357,8 +341,27 @@
                         }
                     }
                 },
-                "initialConfigurations": [
-                    {
+                "initialConfigurations": [{
+                    "name": "XXLua_Launch_Debuger",
+                    "type": "XXLua_launch_lua",
+                    "request": "launch",
+                    "clientHost": "localhost",
+                    "port": 8896,
+                    "printType": 1,
+                    "externalVariables": [
+                        "super",
+                        "_super",
+                        "__super"
+                    ],
+                    "filterFiles": [
+                        "Core/Utils/lazyRequire.lua",
+                        "Core/Class/ClassCreatorCopy.lua"
+                    ]
+                }],
+                "configurationSnippets": [{
+                    "label": "XXLua_Launch_Debuger",
+                    "description": "XXLua Launch调试器， 暂不可用",
+                    "body": {
                         "name": "XXLua_Launch_Debuger",
                         "type": "XXLua_launch_lua",
                         "request": "launch",
@@ -375,30 +378,7 @@
                             "Core/Class/ClassCreatorCopy.lua"
                         ]
                     }
-                ],
-                "configurationSnippets": [
-                    {
-                        "label": "XXLua_Launch_Debuger",
-                        "description": "XXLua Launch调试器， 暂不可用",
-                        "body": {
-                            "name": "XXLua_Launch_Debuger",
-                            "type": "XXLua_launch_lua",
-                            "request": "launch",
-                            "clientHost": "localhost",
-                            "port": 8896,
-                            "printType": 1,
-                            "externalVariables": [
-                                "super",
-                                "_super",
-                                "__super"
-                            ],
-                            "filterFiles": [
-                                "Core/Utils/lazyRequire.lua",
-                                "Core/Class/ClassCreatorCopy.lua"
-                            ]
-                        }
-                    }
-                ],
+                }],
                 "languages": [
                     "lua"
                 ]
@@ -422,6 +402,7 @@
         "vscode-test": "^1.6.1"
     },
     "dependencies": {
+        "lua-fmt": "^2.6.0",
         "vscode-debugadapter": "^1.49.0",
         "vscode-debugprotocol": "^1.49.0",
         "vscode-languageclient": "7.0.0"
