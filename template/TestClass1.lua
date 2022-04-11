@@ -1,4 +1,4 @@
---
+-- Des: 
 -- Author: {author}
 -- Date: {time}
 local {moduleName} = class("{moduleName}")
