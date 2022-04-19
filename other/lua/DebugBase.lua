@@ -440,9 +440,7 @@ function DebugBase:doReceiveAttachSocket()
                 if cmd == Protocol.startDebug then
                     ---@type S2C_StartDebug
                     local args = msg.args
-                    self.m_host = args.host;
-                    self.m_port = args.port;
-                    self:startDebug()
+                    self:startDebug(args.host, args.port)
 
                     return true
                 end
@@ -606,6 +604,8 @@ function DebugBase:startDebug(host, port)
 
     self:closeAttachServer()
 
+    print(string.format("Try to connect host(%s:%d)",host, port ))
+
     --辅助socket
     self.m_supportSocket = xxlua_require("DebugClient").new()
     local server = self.m_supportSocket:connect(host, port)
@@ -631,6 +631,9 @@ end
 ---@public
 ---启动附加服务器
 function DebugBase:startAttachServer()
+    if not self.m_port then
+        return
+    end
     Utils.xpcall(function()
         if not self.m_attachServer then
             --附加服务器

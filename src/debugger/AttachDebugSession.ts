@@ -74,13 +74,15 @@ export class AttachDebugSession extends DebugSession {
                 }
                 this.tryAttach(port + 1);
             }).on('data', (data) => {
+                
                 let msg = {
                     command: Proto.CMD.startDebug,
                     args: {
-                        host: this.mDebugData?.clientHost,
+                        host: DebugUtil.getInstance().getIPAdress(),
                         port: this.mDebugData?.port
                     }
                 };
+                // this.printConsole("receive data" + JSON.stringify(msg), 2);
                 sock.write(`${JSON.stringify(msg)}\n`);
                 sock.destroy();
             });
