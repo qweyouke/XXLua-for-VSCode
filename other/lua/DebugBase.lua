@@ -604,7 +604,7 @@ function DebugBase:startDebug(host, port)
 
     self:closeAttachServer()
 
-    print(string.format("Try to connect host(%s:%d)",host, port ))
+    print(string.format("Try to connect the debugger(%s:%d)",host, port ))
 
     --辅助socket
     self.m_supportSocket = xxlua_require("DebugClient").new()
