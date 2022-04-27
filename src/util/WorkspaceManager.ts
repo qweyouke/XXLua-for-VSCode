@@ -1,7 +1,8 @@
-//配置
+//工作区管理器
 import * as vscode from 'vscode';
 import { Util } from './Util';
-import { CONFIG_NAME } from './Define';
+import { CONFIG_NAME, LOCAL_DATA_FILE } from './Define';
+import { XXLuaData } from './XXLuaData';
 
 const EXTENSION_NAME: string = "XXLua";
 
@@ -18,8 +19,6 @@ export class WorkspaceManager {
     private mGlobalConfig: vscode.WorkspaceConfiguration | undefined;
     //工作区配置
     private mWorkSpaceConfig: vscode.WorkspaceConfiguration | undefined;
-    //本插件实例
-    private mExtension: vscode.Extension<any> | undefined;
     //文件列表 右单斜线路径
     private mFiles: Map<string, vscode.Uri>;
     //相对文件路径列表 右单斜线路径
@@ -30,20 +29,24 @@ export class WorkspaceManager {
     private mLuaRootName:string | undefined;
     //本扩展上下文
     private mContext: vscode.ExtensionContext | undefined;
+    //工作区本地数据
+    private mLocalData: XXLuaData | undefined;
 
     constructor() {
         this.mFiles = new Map<string, vscode.Uri>();
         this.mRelativeFilePaths = new Map<string, string[]>();
+        this.mLocalData = new XXLuaData();
     }
 
     init(context: vscode.ExtensionContext) {
         this.mContext = context;
-        
+        this.initLocalData();
         //工作区发生变化， 初始化工作区配置
         vscode.workspace.onDidChangeWorkspaceFolders(() => {
             this.mWorkSpaceConfig = undefined;
             this.mLuaRoot = undefined;
             this.initFileList();
+            this.initLocalData();
         });
         //创建文件
         vscode.workspace.onDidCreateFiles((e: vscode.FileCreateEvent) => {
@@ -70,6 +73,22 @@ export class WorkspaceManager {
             this.mWorkSpaceConfig = undefined;
         });
     }
+
+    //初始化本地数据
+    private initLocalData() {
+        this.mLocalData?.init(this.getLuaRoot() + "/" + LOCAL_DATA_FILE);
+    }
+
+    //设置本地数据
+    public updateLocalData(key: string, value: any) {
+        this.mLocalData?.update(key, value);
+    }
+
+    //获取本地数据
+    public getLocalData(key: string, defaultValue: any | undefined = undefined): any {
+        return this.mLocalData?.get(key, defaultValue);
+    }
+
 
     //添加文件缓存
     private addFileCache(uri: vscode.Uri) {

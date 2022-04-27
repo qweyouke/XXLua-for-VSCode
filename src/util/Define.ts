@@ -28,4 +28,6 @@ export const LOCAL_DATA_NAME = {
     isDisableUnityDebug: "isDisableUnityDebug"
 };
 
+export const UNITY_DEBUG_FILE = "LuaDebugTool.cs";
+export const LOCAL_DATA_FILE = ".xxluadata";
 export const LANGUAGE_ID = "lua";

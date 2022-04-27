@@ -43,10 +43,17 @@ public static class LuaDebugTool
 
         Application.wantsToQuit += () =>
         {
-            func.Call();
-            func.Dispose(true);
-            func = null;
-            return true;
+            try
+            {
+                func.Call();
+                func.Dispose(true);
+                func = null;
+                return true;
+            }
+            catch (Exception e)
+            {
+                return true;
+            }
         };
     }
 

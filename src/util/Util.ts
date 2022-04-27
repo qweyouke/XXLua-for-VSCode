@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as child_process from "child_process";
 import { WorkspaceManager } from './WorkspaceManager';
 
+
 export class Util {
     private static _util: Util;
     public static getInstance() {
@@ -43,6 +44,14 @@ export class Util {
             }
         });
         return dirs;
+    }
+
+    //创建空文件
+    public tryCreateFile(filePath: string, defaultContent: string = "") {
+        if (fs.existsSync(filePath)) {
+            return;
+        }
+        fs.writeFileSync(filePath, defaultContent);
     }
 
     //读文件

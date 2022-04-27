@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import { Util } from './Util';
 import { WorkspaceManager } from './WorkspaceManager';
-import { LOCAL_DATA_NAME } from './Define';
+import { LOCAL_DATA_NAME, UNITY_DEBUG_FILE } from './Define';
 import path = require('path');
 
 export class Update {
@@ -172,7 +172,7 @@ export class Update {
 
     //获取本地lua调试器版本
     public getLocalLuaDebugVersion(): string | undefined {
-        return WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.luaDebugVersion);
+        return WorkspaceManager.getInstance().getLocalData(LOCAL_DATA_NAME.luaDebugVersion);
     }
 
     //获取插件lua调试器版本
@@ -182,14 +182,14 @@ export class Update {
 
     //更新本地lua调试器版本
     public updateLocalLuaDebugVersion(): void {
-        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.luaDebugVersion, this.getExtensionLuaDebugVersion());
+        WorkspaceManager.getInstance().updateLocalData(LOCAL_DATA_NAME.luaDebugVersion, this.getExtensionLuaDebugVersion());
     }
 
     //--------------------------------------------------------------------------------------------
 
     //是否禁用unity调试器
     public isDisableUnityDebug(): boolean | undefined {
-        return WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.isDisableUnityDebug);
+        return WorkspaceManager.getInstance().getLocalData(LOCAL_DATA_NAME.isDisableUnityDebug);
     }
 
     //设置是否禁用unity调试器
@@ -197,7 +197,7 @@ export class Update {
         if (isDisabled) {
             vscode.window.showInformationMessage("已禁用unity调试器，如需重新启用unity调试器，可在VSCode资源管理器点击鼠标右键-导入Unity调试文件");
         }
-        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.isDisableUnityDebug, isDisabled);
+        WorkspaceManager.getInstance().updateLocalData(LOCAL_DATA_NAME.isDisableUnityDebug, isDisabled);
     }
 
     //是否已加载unity调试器
@@ -212,7 +212,7 @@ export class Update {
 
     //获取本地unity调试器版本
     public getLocalUnityDebugVersion(): string | undefined {
-        return WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.unityDebugVersion);
+        return WorkspaceManager.getInstance().getLocalData(LOCAL_DATA_NAME.unityDebugVersion);
     }
 
     //获取插件unity调试器版本
@@ -222,7 +222,7 @@ export class Update {
 
     //更新本地unity调试器版本
     public updateLocalUnityDebugVersion(): void {
-        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.unityDebugVersion, this.getExtensionUnityDebugVersion());
+        WorkspaceManager.getInstance().updateLocalData(LOCAL_DATA_NAME.unityDebugVersion, this.getExtensionUnityDebugVersion());
     }
 
     //--------------------------------------------------------------------------------------------
@@ -273,7 +273,7 @@ export class Update {
         Util.getInstance().copyDir(from, to);
         Util.getInstance().openFileInFinder(to);
         this.updateLocalLuaDebugVersion();
-        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.luaDebugPath, to);
+        WorkspaceManager.getInstance().updateLocalData(LOCAL_DATA_NAME.luaDebugPath, to);
     }
 
     //获取Unity脚本路径
@@ -301,12 +301,12 @@ export class Update {
         } else {
             to = path + "/Debug";
         }
-        to = to + "/" + "LuaDebugTool.cs";
+        to = to + "/" + UNITY_DEBUG_FILE;
         Util.getInstance().copy(from, to);
         Util.getInstance().openFileInFinder(Util.getInstance().getDirPath(to));
         this.setDisableUnityDebug(false);
         this.updateLocalUnityDebugVersion();
-        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.unityDebugPath, to);
+        WorkspaceManager.getInstance().updateLocalData(LOCAL_DATA_NAME.unityDebugPath, to);
     }
 
     //打开导入调试文件弹窗
@@ -358,7 +358,7 @@ export class Update {
         }
         //找不到就读配置
         if (!dirPath) {
-            dirPath = WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.luaDebugPath);
+            dirPath = WorkspaceManager.getInstance().getLocalData(LOCAL_DATA_NAME.luaDebugPath);
         }
         this.mLuaDebugPath = dirPath;
         return dirPath;
@@ -366,12 +366,12 @@ export class Update {
 
     //获取unity lua框架
     public getLocalLuaFramework(): string | undefined {
-        return WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.unityDebugLuaFramework);
+        return WorkspaceManager.getInstance().getLocalData(LOCAL_DATA_NAME.unityDebugLuaFramework);
     }
 
     //设置unity lua框架
     public updateLocalLuaFramework(str: string) {
-        WorkspaceManager.getInstance().getWorkspaceLocalData()?.update(LOCAL_DATA_NAME.unityDebugLuaFramework, str);
+        WorkspaceManager.getInstance().updateLocalData(LOCAL_DATA_NAME.unityDebugLuaFramework, str);
     }
 
     //获取插件unity lua框架
@@ -401,12 +401,12 @@ export class Update {
         }
         //优先查找本地文件
         let dirPath: string | undefined = undefined;
-        let fullPath = WorkspaceManager.getInstance().getFileFullPath("LuaDebugTool.cs");
+        let fullPath = WorkspaceManager.getInstance().getFileFullPath(UNITY_DEBUG_FILE);
         if (!fullPath || (fullPath instanceof Array && fullPath.length > 1)) {
             //不存在或有多个同名文件，匹配失败
 
             //找不到就读配置
-            dirPath = WorkspaceManager.getInstance().getWorkspaceLocalData()?.get(LOCAL_DATA_NAME.unityDebugPath);
+            dirPath = WorkspaceManager.getInstance().getLocalData(LOCAL_DATA_NAME.unityDebugPath);
         } else {
             dirPath = Util.getInstance().getDirPath(fullPath instanceof Array ? fullPath[0] : fullPath);
         }
