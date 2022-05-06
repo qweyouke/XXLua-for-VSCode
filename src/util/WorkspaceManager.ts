@@ -76,7 +76,7 @@ export class WorkspaceManager {
 
     //初始化本地数据
     private initLocalData() {
-        this.mLocalData?.init(this.getLuaRoot() + "/" + LOCAL_DATA_FILE);
+        this.mLocalData?.init(this.getLuaRoot() + ".vscode/" + LOCAL_DATA_FILE);
     }
 
     //设置本地数据

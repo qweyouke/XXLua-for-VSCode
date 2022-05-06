@@ -51,6 +51,13 @@ export class Util {
         if (fs.existsSync(filePath)) {
             return;
         }
+        var dirPath = path.dirname(filePath);
+        try {
+            fs.statSync(dirPath);
+        } catch (error) {
+            fs.mkdirSync(dirPath, { recursive: true });
+        }
+
         fs.writeFileSync(filePath, defaultContent);
     }
 
