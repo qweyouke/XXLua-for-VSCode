@@ -164,6 +164,7 @@ function DebugClient:printConsole(msg, type)
     type = type or 0
     local msgTb = {}
     while true do
+        msg = Utils.filterSpecChar(msg)
         if msg:len() > 500000 then
             local str = msg:sub(0, 500000)
             local idx = Utils.lastFind(str, "\n")

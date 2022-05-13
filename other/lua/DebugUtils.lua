@@ -351,6 +351,11 @@ function Utils.ParseCSharpValue(csharpVar)
     return varInfos
 end
 
+local DisableDelChars = {
+    [string.byte("\n")] = true,
+    [string.byte("\t")] = true,
+}
+
 --过滤特殊不可见字符
 function Utils.filterSpecChar(s)
     local ss = {}
@@ -366,7 +371,7 @@ function Utils.filterSpecChar(s)
         end
 
         if c < 192 then
-            if c >= 32 and c <= 126 then
+            if (c >= 32 and c <= 126) or DisableDelChars[c] then
                 table.insert(ss, string.char(c))
             else
                 table.insert(ss, "?")
