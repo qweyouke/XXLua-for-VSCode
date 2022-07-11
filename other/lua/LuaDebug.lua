@@ -80,7 +80,6 @@ return function(host, port)
             _fullPrefixPath = nil
         end
     end
-
     if jit then
         xxlua_require("LuaDebugJit")
     else

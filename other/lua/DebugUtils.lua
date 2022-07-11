@@ -733,29 +733,29 @@ end
 ---将多个参数字符串连接起来
 function Utils.unpackStr(...)
     local arg = tablePack(...)
-    if #arg == 0 then
-        arg = { "nil" }
+    local len = arg.n
+
+
+    if len == 0 then
+        return "nil"
     else
-        for k, v in pairs(arg) do
+        local strRet = {}
+        for i = 1, len do
+            local v = arg[i]
             if v == nil then
-                arg[k] = "nil"
+                strRet[i] = "nil"
             else
                 local tp = type(v)
                 if tp ~= "number" and tp ~= "string" then
-                    arg[k] = tostring(v)
+                    strRet[i] = tostring(v)
+                else
+                    strRet[i] = v
                 end
             end
         end
-    end
 
-    local sIdx = next(arg)
-    for i = 1, sIdx do
-        if arg[i] == nil then
-            arg[i] = "nil"
-        end
+        return table.concat(strRet, "\t")
     end
-
-    return table.concat(arg, "\t")
 end
 
 function Utils.xpcall(func)

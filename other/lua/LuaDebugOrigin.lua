@@ -3,7 +3,7 @@
 ---@class LuaDebugOrigin:DebugBase
 ---@field protected super DebugBase 父类
 ---@field private m_stepInCount number 单步跳入次数
-local LuaDebugOrigin = xxlua_require("DebugClass") ("LuaDebugOrigin", xxlua_require("DebugBase"))
+local LuaDebugOrigin = xxlua_require("DebugClass")("LuaDebugOrigin", xxlua_require("DebugBase"))
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
 
@@ -12,6 +12,14 @@ local Utils = xxlua_require("DebugUtils")
 function LuaDebugOrigin:ctor()
     self.super.ctor(self)
     self.m_stepInCount = 0
+end
+
+function LuaDebugOrigin:AddStepInCount()
+    self.m_stepInCount = self.m_stepInCount + 1
+end
+
+function LuaDebugOrigin:SubStepInCount()
+    self.m_stepInCount = self.m_stepInCount - 1
 end
 
 function LuaDebugOrigin:debugger_resetDebugInfo()
@@ -48,17 +56,20 @@ function LuaDebugOrigin:debug_hook(event, line)
         return
     end
 
-    if event == "call" then
-        if not self.m_isInRun then
-            self.m_stepInCount = self.m_stepInCount + 1
-        end
-    elseif event == "return" or event == "tail return" then
-        if not self.m_isInRun then
-            self.m_stepInCount = self.m_stepInCount - 1
+    if not self.m_isInRun then
+        if event == "call" then
+            self:AddStepInCount()
+        elseif event == "tail call" then
+            local info = debug.getinfo(2, "lfS")
+            if info.currentline ~= info.lastlinedefined then
+                self:AddStepInCount()
+            end
+        elseif event == "return" or event == "tail return" then
+            self:SubStepInCount()
         end
     end
 
-    local info = debug.getinfo(2)
+    local info = debug.getinfo(2,"lfS")
     if info.source == "=[C]" or info.source == "[C]" then
         return
     end
@@ -80,19 +91,38 @@ function LuaDebugOrigin:debug_hook(event, line)
                 return
             elseif self.m_isStepNext then
                 if self.m_stepInCount <= 0 then
+                    -- local dt = os.clock() - self.m_lastNextTime
+                    -- local ret = string.format("%s[%s():%d] %0.6f", self.m_currentStackInfo[1].fileName, self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
+                    -- if dt > 0.125 then
+                    --     printErr("BigJank",ret)
+                    -- elseif dt > 0.083 then
+                    --     printWarn("Jank", ret)
+                    -- else
+                    --     -- print(ret)
+                    -- end
+                    
                     self:hitBreakPoint()
                     return
                 else
-                    --查询当前堆栈函数 (主要用于在"pcall"函数中报错时call和return不成对的问题，只向上取3位，可能还是存在误差，不过绝大多数情况下够用了)
+                    --查询当前堆栈函数 (主要用于在"pcall"函数中报错时call和return不成对的问题，只向上取2位，可能还是存在误差)
                     local len = #self.m_currentStackInfo
-                    local i = len - 3
+                    local i = len - 2
                     if i < 1 then
                         i = 1
                     end
-
-                    for j = i, len do
+                    for j = 1, i do
                         local v = self.m_currentStackInfo[j]
                         if (v.func == info.func) then
+                            -- local dt = os.clock() - self.m_lastNextTime
+                            -- local ret = string.format("%s, [%s():%d]:%0.6f", self.m_currentStackInfo[1].fileName, self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
+                            -- if dt > 0.125 then
+                            --     printErr("BigJank", ret)
+                            -- elseif dt > 0.083 then
+                            --     printWarn("Jank", ret)
+                            -- else
+                            --     print(ret)
+                            -- end
+                            
                             self:hitBreakPoint()
                             return
                         end

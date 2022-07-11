@@ -89,7 +89,7 @@ function LuaDebugJit:debug_hook(event, line)
     end
 
     if self.m_continueStackInfo then
-        local info = debug.getinfo(2)
+        local info = debug.getinfo(2, "lfS")
         if info.source == "=[C]" or info.source == "[C]" then
             return
         end
@@ -110,7 +110,7 @@ function LuaDebugJit:debug_hook(event, line)
             return
         end
 
-        local info = debug.getinfo(2)
+        local info = debug.getinfo(2, "lfS")
         if info.source == "=[C]" or info.source == "[C]" then
             return
         end

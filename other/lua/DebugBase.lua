@@ -9,6 +9,7 @@ xxlua_require("DebugFunctions")
 ---@field private m_port number 端口
 ---@field private m_loop_coroutine thread 主循环协程
 ---@field private m_hook_func fun(event:string, line:number) 钩子函数
+---@field private m_hook_type string 钩子类型
 ---@field private m_debugSocket DebugClient 调试socket
 ---@field private m_supportSocket DebugClient 辅助socket
 ---@field private m_attachServer DebugServer 附加服务器 用于中途附加调试
@@ -25,20 +26,21 @@ xxlua_require("DebugFunctions")
 ---@field private m_hookCallCount number hook调用次数
 ---@field private m_lastReceiveTime number 最后一次receive时间
 ---@field private m_watchVars table<number, VariableData> 监视变量数据
+---@field private m_lastNextTime number 最后一次单步跳过时间
 local DebugBase = xxlua_require("DebugClass")("DebugBase")
 
 local _yield = coroutine.yield
 local _resume = coroutine.resume
 coroutine.resume = function(co, ...)
     if coroutine.status(co) ~= "dead" then
-        debug.sethook(co, LuaDebug:getHookFunc(), "lrc")
+        debug.sethook(co, LuaDebug:getHookFunc())
     end
     return _resume(co, ...)
 end
 local _wrap = coroutine.wrap
 coroutine.wrap = function(fun)
     local newFun = _wrap(function()
-        debug.sethook(LuaDebug:getHookFunc(), "lrc")
+        debug.sethook(LuaDebug:getHookFunc())
         return fun();
     end)
     return newFun
@@ -163,9 +165,9 @@ end
 
 ---@public
 ---获取钩子函数
----@return fun(event:string, line:number)
+---@return fun(event:string, line:number), string
 function DebugBase:getHookFunc()
-    return self.m_hook_func
+    return self.m_hook_func, self.m_hook_type
 end
 
 ---@private
@@ -221,14 +223,16 @@ end
 ---设置调试hook
 function DebugBase:debugger_initDebugHook()
     self.m_hook_func = handler(self, self.debug_hook)
-    debug.sethook(self.m_hook_func, "lrc")
+    self.m_hook_type = "lrc"
+    debug.sethook(self.m_hook_func, self.m_hook_type)
 end
 
 ---@private
 ---设置附加服务器hook
 function DebugBase:debugger_initAttachServerHook()
     self.m_hook_func = handler(self, self.tryAcceptAttachServer)
-    debug.sethook(self.m_hook_func, "lrc")
+    self.m_hook_type = "c"
+    debug.sethook(self.m_hook_func, self.m_hook_type)
 end
 
 ---@private
@@ -379,6 +383,7 @@ end
 ---单步跳过
 function DebugBase:onStepNext()
     self:debugger_resetDebugInfo()
+    self.m_lastNextTime = os.clock()
     self.m_isStepNext = true
     local stack = _yield()
     self.m_debugSocket:pause(stack)
@@ -412,19 +417,17 @@ end
 ---@private
 ---尝试连接附加服务
 function DebugBase:tryAcceptAttachServer(event, line)
-    if event == "call" then
-        if self.m_hookCallCount >= 100 then
-            self.m_hookCallCount = 0
+    if self.m_hookCallCount >= 100 then
+        self.m_hookCallCount = 0
 
-            --os.clock 此接口性能消耗极小 调用100万次只需50毫秒 故可用作定时器
-            local time = os.clock()
-            if time - self.m_lastReceiveTime > 0.1 then
-                self.m_lastReceiveTime = time
-                self:doReceiveAttachSocket()
-            end
-        else
-            self.m_hookCallCount = self.m_hookCallCount + 1
+        --os.clock 此接口性能消耗极小 调用100万次只需50毫秒 故可用作定时器
+        local time = os.clock()
+        if time - self.m_lastReceiveTime > 0.1 then
+            self.m_lastReceiveTime = time
+            self:doReceiveAttachSocket()
         end
+    else
+        self.m_hookCallCount = self.m_hookCallCount + 1
     end
 end
 
@@ -573,6 +576,9 @@ function DebugBase:stopDebug()
         self.m_supportSocket = nil
         self.m_debugSocket:close()
         self.m_debugSocket = nil
+
+        self.m_hook_func = nil
+        self.m_hook_type = nil
 
         self.m_initData = nil
         self.m_breakPoints = {}
