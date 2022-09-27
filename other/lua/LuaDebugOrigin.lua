@@ -3,6 +3,8 @@
 ---@class LuaDebugOrigin:DebugBase
 ---@field protected super DebugBase 父类
 ---@field private m_stepInCount number 单步跳入次数
+---@field private m_stepNextTime number 单步跳过断点时hook的执行次数
+---@field private m_stepNextDate number 单步跳过断点时的时间
 local LuaDebugOrigin = xxlua_require("DebugClass")("LuaDebugOrigin", xxlua_require("DebugBase"))
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
@@ -25,6 +27,14 @@ end
 function LuaDebugOrigin:debugger_resetDebugInfo()
     self.super.debugger_resetDebugInfo(self)
     self.m_stepInCount = 0
+    self.m_stepNextTime = 0
+end
+
+---@protected
+---单步跳过
+function LuaDebugOrigin:onStepNext()
+    self.m_stepNextDate = os.clock()
+    self.super.onStepNext(self)
 end
 
 ---@protected
@@ -69,7 +79,7 @@ function LuaDebugOrigin:debug_hook(event, line)
         end
     end
 
-    local info = debug.getinfo(2,"lfS")
+    local info = debug.getinfo(2, "lfS")
     if info.source == "=[C]" or info.source == "[C]" then
         return
     end
@@ -92,29 +102,26 @@ function LuaDebugOrigin:debug_hook(event, line)
             elseif self.m_isStepNext then
                 if self.m_stepInCount <= 0 then
                     -- local dt = os.clock() - self.m_lastNextTime
-                    -- local ret = string.format("%s[%s():%d] %0.6f", self.m_currentStackInfo[1].fileName, self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
+                    -- local ret = string.format("%s[%s():%d] %0.6f", self.m_currentStackInfo[1].fileName,
+                    --     self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
                     -- if dt > 0.125 then
-                    --     printErr("BigJank",ret)
+                    --     printErr("BigJank", ret)
                     -- elseif dt > 0.083 then
                     --     printWarn("Jank", ret)
                     -- else
-                    --     -- print(ret)
+                    --     print(ret)
                     -- end
-                    
+
                     self:hitBreakPoint()
                     return
                 else
                     --查询当前堆栈函数 (主要用于在"pcall"函数中报错时call和return不成对的问题，只向上取2位，可能还是存在误差)
-                    local len = #self.m_currentStackInfo
-                    local i = len - 2
-                    if i < 1 then
-                        i = 1
-                    end
-                    for j = 1, i do
+                    for j = 1, 2 do
                         local v = self.m_currentStackInfo[j]
-                        if (v.func == info.func) then
+                        if v and v.func == info.func then
                             -- local dt = os.clock() - self.m_lastNextTime
-                            -- local ret = string.format("%s, [%s():%d]:%0.6f", self.m_currentStackInfo[1].fileName, self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
+                            -- local ret = string.format("%s, [%s():%d]:%0.6f", self.m_currentStackInfo[1].fileName,
+                            --     self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
                             -- if dt > 0.125 then
                             --     printErr("BigJank", ret)
                             -- elseif dt > 0.083 then
@@ -122,11 +129,19 @@ function LuaDebugOrigin:debug_hook(event, line)
                             -- else
                             --     print(ret)
                             -- end
-                            
+
                             self:hitBreakPoint()
                             return
                         end
                     end
+
+                    --单步跳过时内部函数执行行数超过阈值 跳过本次操作
+                    self.m_stepNextTime = self.m_stepNextTime + 1
+                    if self.m_stepNextTime >= 1000000 or os.clock() - self.m_stepNextDate > 15 then
+                        printWarn("代码执行异常, 重置堆栈信息")
+                        self.m_supportSocket:resetStackInfo()
+                        self:debugger_resetRun()
+                    end 
                 end
             end
         end

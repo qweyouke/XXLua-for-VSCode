@@ -4,6 +4,7 @@
 ---@field protected super DebugBase 父类
 ---@field private m_continueStackInfo StackInfo[] 跳过断点时的堆栈信息
 ---@field private m_stepNextTime number 单步跳过断点时hook的执行次数
+---@field private m_stepNextDate number 单步跳过断点时的时间
 ---@field private m_isForceHitNextLine boolean 是否强制命中下一行断点
 local LuaDebugJit = xxlua_require("DebugClass") ("LuaDebugJit", xxlua_require("DebugBase"))
 ---@type Utils
@@ -31,6 +32,13 @@ end
 function LuaDebugJit:debugger_resetRun()
     self.super.debugger_resetRun(self)
     self.m_isForceHitNextLine = false
+end
+
+---@protected
+---单步跳过
+function LuaDebugJit:onStepNext()
+    self.m_stepNextDate = os.clock()
+    self.super.onStepNext(self)
 end
 
 ---@protected
@@ -167,8 +175,8 @@ function LuaDebugJit:debug_hook(event, line)
                 else
                     --单步跳过时内部函数执行行数超过阈值 跳过本次操作
                     self.m_stepNextTime = self.m_stepNextTime + 1
-                    if self.m_stepNextTime >= 2000000 then
-                        printWarn("本函数执行代码过多, 跳过操作")
+                    if self.m_stepNextTime >= 1000000 or os.clock() - self.m_stepNextDate > 15 then
+                        printWarn("代码执行异常, 重置堆栈信息")
                         self.m_supportSocket:resetStackInfo()
                         self:debugger_resetRun()
                     end
