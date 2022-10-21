@@ -9,6 +9,31 @@ local LuaDebugOrigin = xxlua_require("DebugClass")("LuaDebugOrigin", xxlua_requi
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
 
+-- local sysXpcall = xpcall;
+-- xpcall = function(f, msgh, ...)
+--     return sysXpcall(f, function(...)
+--         print("发生报错，清理堆栈数据")
+--         LuaDebug.m_supportSocket:resetStackInfo()
+--         LuaDebug:debugger_resetRun()
+--         return msgh(...)
+--     end, ...)
+-- end
+
+-- local sysPcall = pcall;
+-- pcall = function(f, ...)
+--     print("进入luapcall")
+--     local tb = {sysPcall(f, ...)}
+
+--     if tb[1] == false then
+--         print("发生报错，清理堆栈数据")
+--         LuaDebug.m_supportSocket:resetStackInfo()
+--         LuaDebug:debugger_resetRun()
+--     end
+
+--     local unpack = table.unpack or unpack
+--     return unpack(tb)
+-- end
+
 ---@protected
 ---override
 function LuaDebugOrigin:ctor()

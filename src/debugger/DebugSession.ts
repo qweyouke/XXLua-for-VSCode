@@ -64,7 +64,7 @@ export class DebugSession extends LoggingDebugSession {
         this.mFrameId = 0;
         this.mStackId = 0;
 
-        process.on('uncaughtException', (err) => { this.printConsole("process.uncaughtException:" + err, PrintType.error); }); //监听未捕获的异常
+        process.on('uncaughtException', (err) => { this.printConsole("process.uncaughtException:" + "\n" + err.stack, PrintType.error); }); //监听未捕获的异常
         process.on('unhandledRejection', (err, promise) => { this.printConsole("process.unhandledRejection:" + err, PrintType.error); }); //监听Promise没有被捕获的失败函数
     }
 
@@ -559,16 +559,16 @@ export class DebugSession extends LoggingDebugSession {
                     variablesReference: scopeData.globalStartRefID,
                     expensive: false
                 },
-                // {
-                //     name: "Invalid",
-                //     variablesReference: scopeData.invalidStartRefID,
-                //     expensive: false
-                // },
-                // {
-                //     name: "Watch",
-                //     variablesReference: scopeData.watchStartRefID,
-                //     expensive: false
-                // },
+                    // {
+                    //     name: "Invalid",
+                    //     variablesReference: scopeData.invalidStartRefID,
+                    //     expensive: false
+                    // },
+                    // {
+                    //     name: "Watch",
+                    //     variablesReference: scopeData.watchStartRefID,
+                    //     expensive: false
+                    // },
                 ]
             };
 
@@ -823,7 +823,7 @@ export class DebugSession extends LoggingDebugSession {
 
             //过滤特殊字符
             let path: string | undefined = args.expression;
-            
+
             let isNumber = HOVER_IS_NUMBER_REGEXP.test(path);
             let isString = HOVER_IS_STRING_REGEXP.test(path);
             if (isNumber || isString || DebugUtil.getInstance().isFilterStr(path)) {

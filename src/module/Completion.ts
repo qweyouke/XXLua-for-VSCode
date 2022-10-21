@@ -147,8 +147,15 @@ export function init(context: vscode.ExtensionContext) {
                 provider.dispose();
             }
         });
+
+        let snippetConfig
         providers = [];
-        let snippetConfig = JSON.parse(Util.getInstance().readFile(WorkspaceManager.getInstance().getExtensionDir() + "\\snippets\\" + SNIPPETS_FILE));
+        try {
+            snippetConfig = JSON.parse(Util.getInstance().readFile(WorkspaceManager.getInstance().getExtensionDir() + "\\snippets\\" + SNIPPETS_FILE));
+        } catch (error) {
+            console.log("语法片断解析失败，请严格按照json格式书写" + error);
+            return;   
+        }
 
         let sort = 1;
         for (const key in snippetConfig) {
