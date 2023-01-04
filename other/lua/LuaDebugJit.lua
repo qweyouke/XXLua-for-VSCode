@@ -231,6 +231,7 @@ end
 local LuaDebug = LuaDebugJit.new()
 xpcall(
     function()
+        ---@type LuaDebugJit
         _G.LuaDebug = LuaDebug
     end,
     function()

@@ -138,6 +138,17 @@ function dump(value, desciption, nesting)
 
     local lookupTable = {}
     local result = {}
+
+    local function _k(k)
+        local t = type(k)
+        if t == "number" then
+            k = '[' .. k .. ']'
+        elseif t == "string" then
+            k = '"' .. k .. '"'
+        end
+        return tostring(k)
+    end
+
     local function _v(v)
         if type(v) == "string" then
             v = '"' .. v .. '"'
@@ -151,11 +162,11 @@ function dump(value, desciption, nesting)
         desciption = desciption or "<var>"
         local spc = ""
         if type(keylen) == "number" then
-            spc = string.rep(" ", keylen - string.len(_v(desciption)))
+            spc = string.rep(" ", keylen - string.len(_k(desciption)))
         end
 
         if type(value) ~= "table" then
-            result[#result + 1] = string.format("%s%s%s = %s", indent, _v(desciption), spc, _v(value))
+            result[#result + 1] = string.format("%s%s%s = %s", indent, _k(desciption), spc, _v(value))
         elseif lookupTable[value] then
             result[#result + 1] = string.format("%s%s%s = *REF*", indent, desciption, spc)
         else
@@ -163,7 +174,7 @@ function dump(value, desciption, nesting)
             if nest > nesting then
                 result[#result + 1] = string.format("%s%s = *MAX NESTING*", indent, desciption)
             else
-                result[#result + 1] = string.format("%s%s = {", indent, _v(desciption))
+                result[#result + 1] = string.format("%s%s = {", indent, _k(desciption))
                 local indent2 = indent .. "    "
                 local keys = {}
                 local keylen = 0
@@ -196,9 +207,12 @@ function dump(value, desciption, nesting)
                 result[#result + 1] = string.format("%s}", indent)
             end
         end
+        if result[#result] then
+            result[#result] = result[#result] .. ","
+        end
     end
 
-    _dump(value, desciption, "- ", 1)
+    _dump(value, desciption, " ", 1)
 
     local str
     for i, line in ipairs(result) do

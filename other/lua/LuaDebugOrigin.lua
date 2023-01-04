@@ -209,6 +209,7 @@ end
 local LuaDebug = LuaDebugOrigin.new()
 xpcall(
     function()
+        ---@type LuaDebugOrigin
         _G.LuaDebug = LuaDebug
     end,
     function()

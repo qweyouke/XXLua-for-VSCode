@@ -253,6 +253,7 @@ end
 ---@param tbkey string 表地址
 ---@param realPath string 真实变量路径
 function DebugClient:sendVariable(path, frameId, vars, tbkey, realPath)
+    -- dump(vars, "sendVariable")
     self:sendMsg(
         Protocol.getVariable,
         {

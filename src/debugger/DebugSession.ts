@@ -11,10 +11,15 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 import * as readline from 'readline';
 import * as path from 'path';
 
-const WATCH_REGEXP1 = /[:|\.]\s*\w+\(.*?\)\s*$/;
+//ref:method() ref.method()
+const WATCH_REGEXP1 = /\w+\s*\((\w|\s)*\)/;
+//#table
 const WATCH_REGEXP2 = /^\s*#\w+/;
-const WATCH_REGEXP3 = /^\s*\w+\s*(<|>|<=|>=|==|~=|\+|\-|\*|\/|<<|>>)\s*\w+/;
-const WATCH_REGEXP4 = /.+?\[.+?\]\s*$/;
+//equ表达式、加减乘除
+const WATCH_REGEXP3 = /^.+(<|>|<=|>=|==|~=|\+|\-|\*|\/|<<|>>).+/;
+//tb[*]
+const WATCH_REGEXP4 = /.+?\[.+?\]/;
+
 const HOVER_SPLIT_REGEXP = /\w+/g;
 const HOVER_IS_NUMBER_REGEXP = /^\d+$/;
 const HOVER_IS_STRING_REGEXP = /^\"/;

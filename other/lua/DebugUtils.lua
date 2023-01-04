@@ -72,6 +72,17 @@ end
 --table拆成参数
 local tableUnpack = table.unpack or unpack
 
+--table长度
+local tableMaxKey = function(t)
+    local count = 0
+    for k, v in pairs(t) do
+        if type(k) == "number" and k > count then
+            count = k
+        end
+    end
+    return count
+end
+
 ---分割字符串
 ---@param text string 需要分割字符串
 ---@param sep string 匹配字符串，支持模式匹配
@@ -370,46 +381,55 @@ function Utils.filterSpecChar(s)
             break
         end
 
-        if c < 192 then
-            if (c >= 32 and c <= 126) or DisableDelChars[c] then
-                table.insert(ss, string.char(c))
-            else
-                table.insert(ss, "?")
-            end
-
-            k = k + 1
-        elseif c < 224 then
-            k = k + 2
-        elseif c < 240 then
-            if c >= 228 and c <= 233 then
-                local c1 = string.byte(s, k + 1)
-                local c2 = string.byte(s, k + 2)
-                if c1 and c2 then
-                    local a1, a2, a3, a4 = 128, 191, 128, 191
-                    if c == 228 then
-                        a1 = 184
-                    elseif c == 233 then
-                        a2, a4 = 190, c1 ~= 190 and 191 or 165
-                    end
-
-                    if c1 >= a1 and c1 <= a2 and c2 >= a3 and c2 <= a4 then
-                        table.insert(ss, string.char(c, c1, c2))
+        xpcall(
+            function ()
+                if c < 192 then
+                    if (c >= 32 and c <= 126) or DisableDelChars[c] then
+                        table.insert(ss, string.char(c))
                     else
-                        table.insert(ss, "#")
+                        table.insert(ss, "?")
                     end
-                end
-            end
 
-            k = k + 3
-        elseif c < 248 then
-            k = k + 4
-        elseif c < 252 then
-            k = k + 5
-        elseif c < 254 then
-            k = k + 6
-        else
-            k = k + 1
-        end
+                    k = k + 1
+                elseif c < 224 then
+                    local c1 = string.byte(s, k + 1)
+                    table.insert(ss, string.char(c, c1))
+                    k = k + 2
+                elseif c < 240 then
+                    -- if c >= 228 and c <= 233 then
+                    local c1 = string.byte(s, k + 1)
+                    local c2 = string.byte(s, k + 2)
+                    if c1 and c2 then
+                        local a1, a2, a3, a4 = 128, 191, 128, 191
+                        if c == 228 then
+                            a1 = 184
+                        elseif c == 233 then
+                            a2, a4 = 190, c1 ~= 190 and 191 or 165
+                        end
+
+                        if c1 >= a1 and c1 <= a2 and c2 >= a3 and c2 <= a4 then
+                            table.insert(ss, string.char(c, c1, c2))
+                        else
+                            table.insert(ss, "#")
+                        end
+                    end
+                    -- end
+
+                    k = k + 3
+                elseif c < 248 then
+                    k = k + 4
+                elseif c < 252 then
+                    k = k + 5
+                elseif c < 254 then
+                    k = k + 6
+                else
+                    k = k + 1
+                end
+            end,
+            function (msg)
+                table.insert(ss, "parse error: "..msg)
+            end
+        )
     end
 
     return table.concat(ss)
@@ -733,7 +753,7 @@ end
 ---将多个参数字符串连接起来
 function Utils.unpackStr(...)
     local arg = tablePack(...)
-    local len = arg.n
+    local len = arg.n or tableMaxKey(arg)
 
 
     if len == 0 then
@@ -742,7 +762,7 @@ function Utils.unpackStr(...)
         local strRet = {}
         for i = 1, len do
             local v = arg[i]
-            if v == nil then
+            if Utils.isNil(v) then
                 strRet[i] = "nil"
             else
                 local tp = type(v)
