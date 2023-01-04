@@ -12,7 +12,7 @@ import * as readline from 'readline';
 import * as path from 'path';
 
 //ref:method() ref.method()
-const WATCH_REGEXP1 = /\w+\s*\((\w|\s)*\)/;
+const WATCH_REGEXP1 = /\w+\s*\(.*\)/;
 //#table
 const WATCH_REGEXP2 = /^\s*#\w+/;
 //equ表达式、加减乘除

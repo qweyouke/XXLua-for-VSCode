@@ -689,7 +689,9 @@ function Utils.watchVariable(exp)
         end
     )
     if ret then
-        if #ret == 1 then
+        if #ret == 0 then
+            return nil
+        elseif #ret == 1 then
             return ret[1]
         else
             return ret
