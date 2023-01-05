@@ -97,11 +97,10 @@ function LuaDebugJit:debug_hook(event, line)
     end
 
     if self.m_continueStackInfo then
-        local info = debug.getinfo(2, "S")
+        local info = debug.getinfo(2, "lfS")
         if info.source == "=[C]" or info.source == "[C]" then
             return
         end
-        Utils.tableMerge(info, debug.getinfo("lf"))
         local stackInfo = self.m_continueStackInfo[1]
 
         if stackInfo and stackInfo.func == info.func then
@@ -118,7 +117,7 @@ function LuaDebugJit:debug_hook(event, line)
             return
         end
 
-        local info = debug.getinfo(2, "S")
+        local info = debug.getinfo(2, "lfS")
         if info.source == "=[C]" or info.source == "[C]" then
             return
         end
@@ -134,8 +133,6 @@ function LuaDebugJit:debug_hook(event, line)
 
         if self.m_currentStackInfo then
             local stackInfo = self.m_currentStackInfo[1]
-            
-            Utils.tableMerge(info, debug.getinfo("lf"))
 
             if info.func == stackInfo.func and info.currentline == stackInfo.currentline then
                 return
