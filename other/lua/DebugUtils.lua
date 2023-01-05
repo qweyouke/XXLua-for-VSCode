@@ -789,6 +789,14 @@ function Utils.xpcall(func)
     )
 end
 
+function Utils.tableMerge(tb1, tb2)
+    for k, v in pairs(tb2) do
+        if not tb1[k] then
+            tb1[k] = v
+        end
+    end
+end
+
 ---@public
 ---重载lua文件
 ---@param data S2C_ReloadLuaArgs

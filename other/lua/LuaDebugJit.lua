@@ -1,5 +1,5 @@
----luajit调试器
----anthor: xxiong
+---luaJit调试器
+---author: xxiong
 ---@class LuaDebugJit:DebugBase
 ---@field protected super DebugBase 父类
 ---@field private m_continueStackInfo StackInfo[] 跳过断点时的堆栈信息
@@ -97,11 +97,11 @@ function LuaDebugJit:debug_hook(event, line)
     end
 
     if self.m_continueStackInfo then
-        local info = debug.getinfo(2, "lfS")
+        local info = debug.getinfo(2, "S")
         if info.source == "=[C]" or info.source == "[C]" then
             return
         end
-
+        Utils.tableMerge(info, debug.getinfo("lf"))
         local stackInfo = self.m_continueStackInfo[1]
 
         if stackInfo and stackInfo.func == info.func then
@@ -118,7 +118,7 @@ function LuaDebugJit:debug_hook(event, line)
             return
         end
 
-        local info = debug.getinfo(2, "lfS")
+        local info = debug.getinfo(2, "S")
         if info.source == "=[C]" or info.source == "[C]" then
             return
         end
@@ -134,6 +134,8 @@ function LuaDebugJit:debug_hook(event, line)
 
         if self.m_currentStackInfo then
             local stackInfo = self.m_currentStackInfo[1]
+            
+            Utils.tableMerge(info, debug.getinfo("lf"))
 
             if info.func == stackInfo.func and info.currentline == stackInfo.currentline then
                 return
@@ -142,9 +144,7 @@ function LuaDebugJit:debug_hook(event, line)
             if self.m_isStepIn then
                 self:hitBreakPoint()
                 return
-            end
-
-            if self.m_isStepNext then
+            elseif self.m_isStepNext then
                 local isNext = self.m_isForceHitNextLine
 
                 if not isNext then
@@ -180,6 +180,11 @@ function LuaDebugJit:debug_hook(event, line)
                         self.m_supportSocket:resetStackInfo()
                         self:debugger_resetRun()
                     end
+                end
+            elseif self.m_isStepOut then
+                if info.func == self.m_currentStackInfo[2].func then
+                    self:hitBreakPoint()
+                    return
                 end
             end
         end

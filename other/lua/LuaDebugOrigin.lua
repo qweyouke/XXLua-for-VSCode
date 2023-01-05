@@ -95,7 +95,7 @@ function LuaDebugOrigin:debug_hook(event, line)
         if event == "call" then
             self:AddStepInCount()
         elseif event == "tail call" then
-            local info = debug.getinfo(2, "lfS")
+            local info = debug.getinfo(2, "lS")
             if info.currentline ~= info.lastlinedefined then
                 self:AddStepInCount()
             end
@@ -104,7 +104,7 @@ function LuaDebugOrigin:debug_hook(event, line)
         end
     end
 
-    local info = debug.getinfo(2, "lfS")
+    local info = debug.getinfo(2, "S")
     if info.source == "=[C]" or info.source == "[C]" then
         return
     end
@@ -118,6 +118,7 @@ function LuaDebugOrigin:debug_hook(event, line)
             end
         end
     end
+
 
     if self.m_currentStackInfo then
         if event == "line" then
@@ -140,6 +141,7 @@ function LuaDebugOrigin:debug_hook(event, line)
                     self:hitBreakPoint()
                     return
                 else
+                    Utils.tableMerge(info, debug.getinfo(2, "f"))
                     --查询当前堆栈函数 (主要用于在"pcall"函数中报错时call和return不成对的问题，只向上取2位，可能还是存在误差)
                     for j = 1, 2 do
                         local v = self.m_currentStackInfo[j]
@@ -166,7 +168,13 @@ function LuaDebugOrigin:debug_hook(event, line)
                         printWarn("代码执行异常, 重置堆栈信息")
                         self.m_supportSocket:resetStackInfo()
                         self:debugger_resetRun()
-                    end 
+                    end
+                end
+            elseif self.m_isStepOut then
+                Utils.tableMerge(info, debug.getinfo(2, "f"))
+                if info.func == self.m_currentStackInfo[2].func then
+                    self:hitBreakPoint()
+                    return
                 end
             end
         end

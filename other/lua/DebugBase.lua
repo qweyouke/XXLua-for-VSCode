@@ -4,25 +4,25 @@ xxlua_require("DebugFunctions")
 ---author: xxiong
 ---
 ---@class DebugBase:DebugClass
----@field private m_initData S2C_InitializeArgs
+---@field protected m_initData S2C_InitializeArgs
 ---@field private m_host string ip
 ---@field private m_port number 端口
 ---@field private m_loop_coroutine thread 主循环协程
 ---@field private m_hook_func fun(event:string, line:number) 钩子函数
 ---@field private m_hook_type string 钩子类型
----@field private m_debugSocket DebugClient 调试socket
----@field private m_supportSocket DebugClient 辅助socket
+---@field protected m_debugSocket DebugClient 调试socket
+---@field protected m_supportSocket DebugClient 辅助socket
 ---@field private m_attachServer DebugServer 附加服务器 用于中途附加调试
----@field private m_breakPoints table<string,BreakInfo[]>
----@field private m_breakLines table<number, boolean> 是否有该行的断点
+---@field protected m_breakPoints table<string,BreakInfo[]>
+---@field protected m_breakLines table<number, boolean> 是否有该行的断点
 ---@field private m_isHookEnabled boolean 是否启用hook
----@field private m_currentStackInfo StackInfo[] 当前堆栈信息
+---@field protected m_currentStackInfo StackInfo[] 当前堆栈信息
 ---@field private m_scopeInfo ScopeInfo[] 变量域数据
 ---@field private m_currentFrameId number 当前堆栈Id
----@field private m_isInRun boolean 是否运行中
----@field private m_isStepNext boolean 是否单步跳过
----@field private m_isStepIn boolean 是否单步跳入
----@field private m_isStepOut boolean 是否单步跳出
+---@field protected m_isInRun boolean 是否运行中
+---@field protected m_isStepNext boolean 是否单步跳过
+---@field protected m_isStepIn boolean 是否单步跳入
+---@field protected m_isStepOut boolean 是否单步跳出
 ---@field private m_hookCallCount number hook调用次数
 ---@field private m_lastReceiveTime number 最后一次receive时间
 ---@field private m_watchVars table<number, VariableData> 监视变量数据
@@ -227,7 +227,7 @@ function DebugBase:debugger_initDebugHook()
     debug.sethook(self.m_hook_func, self.m_hook_type)
 end
 
----@private
+---@protected
 ---设置附加服务器hook
 function DebugBase:debugger_initAttachServerHook()
     self.m_hook_func = handler(self, self.tryAcceptAttachServer)
@@ -235,7 +235,7 @@ function DebugBase:debugger_initAttachServerHook()
     debug.sethook(self.m_hook_func, self.m_hook_type)
 end
 
----@private
+---@protected
 ---重置调试变量
 function DebugBase:debugger_resetDebugInfo()
     self.m_isInRun = false
@@ -247,7 +247,7 @@ function DebugBase:debugger_resetDebugInfo()
     self.m_watchVars = {}
 end
 
----@private
+---@protected
 ---重置运行
 function DebugBase:debugger_resetRun()
     self:debugger_resetDebugInfo()
@@ -452,7 +452,7 @@ function DebugBase:doReceiveAttachSocket()
     end
 end
 
----@private
+---@protected
 ---接收辅助网络消息
 function DebugBase:doReceiveSupportSocket()
     -- print("doReceiveSupportSocket")
