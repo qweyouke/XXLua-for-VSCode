@@ -64,6 +64,7 @@ local ScopeInfo
 ---@class S2C_getVariable
 ---@field path string 变量table路径
 ---@field frameId number 堆栈索引
+---@field isMustBeTable boolean 是否一定是table
 local S2C_getVariable
 
 ---监视变量

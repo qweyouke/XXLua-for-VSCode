@@ -91,7 +91,7 @@ export interface CMD_C2D_GetVariable{
     path?: string
     //
     frameId?: number
-    //真实路径
+    //真实路径 用于取不知道是哪个变量域的变量时，补全后的真实路径
     realPath: string
     //table地址
     tbkey: string

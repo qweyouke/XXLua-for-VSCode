@@ -336,7 +336,7 @@ export class DebugSession extends LoggingDebugSession {
         if (cmd === Proto.CMD.printConsole) {
             this.printConsole(args.msg, args.type);
         } else {
-            // this.printConsole("onReceiveLine: " + line)
+            // this.printConsole("onReceiveLine: " + input)
             if (cmd === Proto.CMD.pause) {
                 this.onReceivePause(args);
             } else if (cmd === Proto.CMD.showDialogMessage) {
@@ -562,7 +562,7 @@ export class DebugSession extends LoggingDebugSession {
                 {
                     name: "Global",
                     variablesReference: scopeData.globalStartRefID,
-                    expensive: false
+                    expensive: true
                 },
                     // {
                     //     name: "Invalid",
@@ -601,11 +601,12 @@ export class DebugSession extends LoggingDebugSession {
         }
     }
 
-    //from调试进程 变量请求
+    //from调试进程 变量请求  (该方法只请求table)
     async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
         // this.printConsole("variablesRequest args:" + JSON.stringify(args));
         // this.printConsole("-----------------------------------------")
 
+        //发送数据过期提示
         const sendExpiredResponse = () => {
             response.body = {
                 variables: [{
@@ -645,6 +646,8 @@ export class DebugSession extends LoggingDebugSession {
         }
 
         if (scopeData.isLoadedFullTable(tbkey)) {
+            //如果已加载完整个table，直接从缓存中获取
+            
             // this.printConsole("variablesRequest from cache");
             const vars = scopeData.getTableVarByRefId(args.variablesReference);
             // this.printConsole(tbkey + ":" + JSON.stringify(vars));
@@ -665,6 +668,8 @@ export class DebugSession extends LoggingDebugSession {
 
             this.sendResponse(response);
         } else {
+            //如果未加载完整个table，请求数据
+
             const path = scopeData.getPathByRefId(args.variablesReference);
             if (!path) {
                 response.body = {
@@ -680,7 +685,7 @@ export class DebugSession extends LoggingDebugSession {
             }
             await new Promise((resolve, reject) => {
                 // this.printConsole("variablesRequest getVariable   id:" + args.variablesReference + " path:" + path);
-                this.sendDebugMessage(Proto.CMD.getVariable, { frameId: frameId, path: path });
+                this.sendDebugMessage(Proto.CMD.getVariable, { frameId: frameId, path: path, isMustBeTable: true });
 
                 this.addSafeEvent(Proto.CMD.getVariable + frameId + path, true,
                     (data: CMD_C2D_GetVariable) => {
@@ -732,6 +737,7 @@ export class DebugSession extends LoggingDebugSession {
             return;
         }
 
+        //发送过期数据
         const sendExpiredResponse = () => {
             response.body = {
                 result: "Expired value",
@@ -766,6 +772,7 @@ export class DebugSession extends LoggingDebugSession {
 
         this.setFrameId(args.frameId);
 
+        //发送数据
         const showEvaluateVariables = (varData: VariableData) => {
             const vars = varData.vars;
             const tbkey = varData.tbkey;
@@ -857,7 +864,7 @@ export class DebugSession extends LoggingDebugSession {
                 if (!path) {
                     path = iterator[0];
                 } else {
-                    path = path + "-" + iterator[0];
+                    path = path + "-->" + iterator[0];
                 }
             }
             // this.printConsole("evaluateRequest path:" + path);

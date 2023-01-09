@@ -14,6 +14,8 @@ export class ScopeData {
     data: CMD_C2D_GetScopes;
     //table唯一id <tbkey, id>
     private mTableRefIds: Map<string, number>;
+    //变量路径 <tbkey, path>
+    private mTablePaths: Map<string, string>;
     //变量路径 <path, pathData>
     private mLoadedPaths: Map<string, VariablePathData>;
     //变量<tbkey, <varKey, data>>
@@ -35,6 +37,7 @@ export class ScopeData {
         this.data = data;
         this.core = core;
         this.mTableRefIds = new Map<string, number>();
+        this.mTablePaths = new Map<string, string>();
         this.mLoadedPaths = new Map<string, VariablePathData>();
         this.mLoadedVars = new Map<string, DebugProtocol.Variable[]>();
         this.mIsLoadedFullTables = new Map<string, boolean>();
@@ -66,7 +69,7 @@ export class ScopeData {
 
     //创建table唯一id
     createRef(tbkey: string) {
-        let refId = this.mTableRefIds.get(tbkey);
+        let refId = this.getRefID(tbkey)
         if (!refId) {
             refId = this.mHandles.create(tbkey);
             this.mTableRefIds.set(tbkey, refId);
@@ -87,6 +90,7 @@ export class ScopeData {
     addPath(path: string, tbkey: string, varKey: string | undefined = undefined) {
         if (!this.mLoadedPaths.has(path)) {
             this.mLoadedPaths.set(path, { tbkey: tbkey, varKey: varKey });
+            this.mTablePaths.set(tbkey, path)
             // this.core.printConsole("addPath path:" + path + "   tbkey:" + tbkey + "   varKey:" + varKey);
         }
     }
@@ -94,11 +98,8 @@ export class ScopeData {
     //通过table唯一id找路径
     getPathByRefId(refID: number) {
         const tbkey = this.getTbkey(refID);
-
-        for (var [key, value] of this.mLoadedPaths) {
-            if (value.tbkey === tbkey) {
-                return key;
-            }
+        if (tbkey) {
+            return this.mTablePaths.get(tbkey);
         }
     }
 
@@ -123,7 +124,7 @@ export class ScopeData {
         if (!pathData) {
             //不是传的全路径， 则从全路径缓存中去找值
             for (const prefixKey of STRUCT_LIST) {
-                pathData = this.mLoadedPaths.get(prefixKey + "-" + path);
+                pathData = this.mLoadedPaths.get(prefixKey + "-->" + path);
                 if (pathData) {
                     break;
                 }
@@ -190,7 +191,7 @@ export class ScopeData {
             varList.sort();
             varList.forEach(key => {
                 const value = vars.var[key];
-                const varPath = path + "-" + this.clearExternalKey(key);
+                const varPath = path + "-->" + this.clearExternalKey(key);
                 if (value.type === TABLE) {
                     let newRefId = this.createRef(value.var);
                     
@@ -222,7 +223,7 @@ export class ScopeData {
                 this.mLoadedVars.set(tbkey, variables);
             }
 
-            let paths = path.split("-");
+            let paths = path.split("-->");
             const key = paths[paths.length - 1];
 
             let value = {

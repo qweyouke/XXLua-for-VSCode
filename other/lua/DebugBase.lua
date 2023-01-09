@@ -318,7 +318,7 @@ function DebugBase:debugger_onLoop()
                                 ---@type S2C_getVariable
                                 local args = msg.args
                                 self.m_currentFrameId = args.frameId
-                                local vars, tbkey, realPath = Utils.getVariable(args.path)
+                                local vars, tbkey, realPath = Utils.getVariable(args.path, args.isMustBeTable)
 
                                 self.m_debugSocket:sendVariable(args.path, args.frameId, vars, tbkey, realPath)
                             end
