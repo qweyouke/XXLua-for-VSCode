@@ -5,6 +5,7 @@ XXLua是一款基于vscode制作的针对lua5.1-5.4及luaJit的编辑和调试�
 - 支持条件断点
 - 支持日志断点
 - 支持监视变量
+- 支持修改变量
 - 支持调试中重载代码
 - Lua代码路径复制
 - function class:name() 类名补全

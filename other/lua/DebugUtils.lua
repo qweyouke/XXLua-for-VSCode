@@ -57,13 +57,6 @@ if (not setfenv) then
     end
 end
 
---合并两个table
-local tableMerge = function(dst, src)
-    for k, v in pairs(src) do
-        Utils.rawset(dst, k, v)
-    end
-end
-
 --参数合并table
 local tablePack = table.pack or function(...)
     return { ... }
@@ -86,8 +79,8 @@ end
 ---分割字符串
 ---@param text string 需要分割字符串
 ---@param sep string 匹配字符串，支持模式匹配
----@param plain boolean 是否开启模式匹配，默认关闭，可省略
----@param base_zero boolean 返回数组是否按照下标0位开始，默认下标1位开始，可省略
+---@param plain boolean? 是否开启模式匹配，默认关闭，可省略
+---@param base_zero boolean? 返回数组是否按照下标0位开始，默认下标1位开始，可省略
 ---@return string[]
 local strSplit = function(text, sep, plain, base_zero)
     ---@type string[]
@@ -143,11 +136,11 @@ end
 
 --是否是c#表
 function Utils.isCSharpTable(var)
-    local a
+    local ret
     Utils.xpcall(function()
-        a = (type(var) == "userdata" and var.GetType and not CSHARP_BASE_VALUE[var:GetType():ToString()])
+        ret = (type(var) == "userdata" and var.GetType and not CSHARP_BASE_VALUE[tostring(var:GetType())])
     end)
-    return a
+    return ret
 end
 
 --是否加载c#调试工具
@@ -227,9 +220,11 @@ function Utils.getFilePathInfo(file)
     return file, fileName, surfixName
 end
 
+---@return {locals: table, localsIndex: table, ups: table, upsIndex: table, func: function}
 local function getStackValue(f)
     local i = 1
     local locals = {}
+    local localsIndex = {}
     -- get locals
     while true do
         local name, value = debug.getlocal(f, i)
@@ -239,6 +234,7 @@ local function getStackValue(f)
 
         if name ~= "(*temporary)" then
             locals[name] = value
+            localsIndex[name] = i
         end
 
         i = i + 1
@@ -247,6 +243,7 @@ local function getStackValue(f)
     local func = debug.getinfo(f, "f").func
     i = 1
     local ups = {}
+    local upsIndex = {}
     while func do -- check for func as it may be nil for tail calls
         local name, value = debug.getupvalue(func, i)
         if Utils.isNil(name) then
@@ -255,14 +252,16 @@ local function getStackValue(f)
 
         if name == "_ENV" then
             ups["_ENV_"] = value
+            upsIndex["_ENV_"] = i
         else
             ups[name] = value
+            upsIndex[name] = i
         end
 
         i = i + 1
     end
 
-    return { locals = locals, ups = ups }
+    return { locals = locals, localsIndex = localsIndex, ups = ups, upsIndex = upsIndex, func = func }
 end
 
 --获取堆栈
@@ -447,7 +446,7 @@ function Utils.createVariable(v)
             return { type = "table", var = Utils.getTbKey(v) }
         elseif type == "userdata" then
             ---@diagnostic disable-next-line: undefined-field
-            return { type = v.GetType and CSHARP_BASE_VALUE[v:GetType():ToString() or "unknown"], var = v:ToString() }
+            return { type = v.GetType and (CSHARP_BASE_VALUE[tostring(v:GetType())] or "unknown") or "unknown", var = tostring(v) }
         elseif type == "string" then
             v = Utils.filterSpecChar(tostring(v))
             return { type = "string", var = v }
@@ -457,40 +456,62 @@ function Utils.createVariable(v)
     end
 end
 
----安全获取table变量
----@param tb table
----@param key any
----@param isTableKey boolean
----@return any
-function Utils.rawget(tb, key, isTableKey)
-    if key == nil then
-        return nil
-    end
-
+--安全获取table值
+function Utils.rawget(tb, key)
     local ret
     xpcall(
         function()
             ret = tb[key]
         end,
         function()
-            xpcall(
-                function()
-                    ret = tb[tonumber(key)]
-                end,
-                function()
-                    ret = rawget(tb, key)
-                end
-            )
+            ret = rawget(tb, key)
         end
     )
-    if Utils.isNil(ret) and isTableKey and type(key) == "string" then
-        for k, v in pairs(tb) do
-            if tostring(k) == key then
-                return v
+    return ret
+end
+
+---安全获取table变量
+---@param tb table
+---@param key any
+---@param isSearchSpecialKeyType boolean? 是否搜索特殊key类型(table、function...)
+---@return any, type  --值、key类型
+function Utils.safeGet(tb, key, isSearchSpecialKeyType)
+    if tb == nil or key == nil then
+        return nil
+    end
+
+    if type(tb) == "table" then
+        --lua对象
+        local ret = Utils.rawget(tb, key)
+        if ret then
+            return ret, type(key)
+        end
+
+        --key类型为number的情况 为了兼容C#的Array
+        if Utils.isNil(ret) then
+            local nKey = tonumber(key)
+            if nKey then
+                ret = Utils.rawget(tb, nKey)
+                if ret then
+                    return ret, "number"
+                end
             end
         end
+
+        --key类型为特殊类型(table、function...)的情况
+        if Utils.isNil(ret) and isSearchSpecialKeyType and type(key) == "string" then
+            for k, v in pairs(tb) do
+                if tostring(k) == key then
+                    return v, "table"
+                end
+            end
+        end
+    elseif Utils.isLoadedLuaDebugTool() and Utils.isCSharpTable(tb) then
+        --C#对象
+        return CS.LuaDebugTool.GetCSharpValue(tb, key), type(key)
     end
-    return ret
+
+    return nil
 end
 
 ---安全设置table变量
@@ -500,27 +521,149 @@ function Utils.rawset(tb, key, value)
             tb[key] = value
         end,
         function()
-            xpcall(
-                function()
-                    tb[tonumber(key)] = value
-                end,
-                function()
-                    rawset(tb, key, value)
-                end
-            )
+            rawset(tb, key, value)
         end
     )
-    -- rawset(tb, key, value)
+end
+
+---无法设置变量的类型。
+local invalidValueTypeDict = {
+    ["userdata"] = true,
+    ["System.Byte"] = true,
+    ["System.Byte[]"] = true,
+    ["System.SByte"] = true,
+    ["System.IntPtr"] = true,
+    ["System.UIntPtr"] = true,
+    ["System.Single"] = true,
+    ["Method"] = true,
+    ["null"] = true
+}
+
+---@public
+---设置变量
+---@param level number
+---@param path string
+---@param key string | any
+---@param value string
+---@return VariableData
+function Utils.setVariable(level, path, key, value)
+    local stackValue = getStackValue(level + 1)
+    local vars = {
+        locals = stackValue.locals,
+        ups = stackValue.ups,
+        global = _G
+    }
+
+    local paths = strSplit(path, "-->")
+
+    --获取额外变量值
+    local loadExtraVar
+    loadExtraVar = function(var, tb)
+        local debugData = LuaDebug:getDebugData()
+        for i, v in ipairs(debugData.externalVariables) do
+            local newVar = Utils.safeGet(var, v)
+            if newVar then
+                if type(newVar) == "table" then
+                    for k2, v2 in pairs(newVar) do
+                        if Utils.isNil(tb[k2]) then
+                            tb[k2] = v2
+                        end
+                    end
+
+                    loadExtraVar(newVar, tb)
+                else
+                    if Utils.isNil(tb[v]) then
+                        tb[v] = newVar
+                    end
+                end
+            end
+        end
+    end
+
+    local function getVar(var, k)
+        if Utils.isNil(var) then
+            return nil
+        end
+
+        local v, keyType = Utils.safeGet(var, k, true)
+
+        --查询扩展数据
+        if Utils.isNil(v) then
+            -- print("查询扩展数据")
+            local tb = {}
+            loadExtraVar(var, tb)
+            v, keyType = Utils.safeGet(tb, k)
+        end
+
+        return v, keyType
+    end
+
+    --上值table
+    local matchedTable
+    for i, v in ipairs(paths) do
+        local nextVar = getVar(matchedTable or vars, v)
+        if not Utils.isNil(nextVar) then
+            if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and i ~= #paths then
+                matchedTable = nil
+                break
+            else
+                matchedTable = nextVar
+            end
+        else
+            matchedTable = nil
+            break
+        end
+    end
+
+    if matchedTable then
+        --过滤不能设置变量的类型
+        local nowValue, keyType = getVar(matchedTable, key)
+        local valueType = type(nowValue)
+        if invalidValueTypeDict[valueType] then
+            printErr("Can't set value of type " .. valueType)
+            return
+        end
+        value = Utils.executeScript(value, level + 1)
+
+        if keyType == "number" then
+            key = tonumber(key)
+        elseif keyType == "boolean" then
+            key = key == "true"
+        elseif keyType == "table" or keyType == "function" or keyType == "userdata" then
+            --特殊类型
+            for k, v in pairs(matchedTable) do
+                if tostring(k) == key then
+                    key = k
+                    break
+                end
+            end
+        end
+
+        if matchedTable == vars.locals then
+            debug.setlocal(level, stackValue.localsIndex[key], value)
+        elseif matchedTable == vars.ups then
+            debug.setupvalue(stackValue.func, stackValue.upsIndex[key], value)
+        else
+            Utils.rawset(matchedTable, key, value)
+        end
+
+
+        print(string.format("Set the variable %s to %s", key, value or "nil"))
+        return Utils.createVariable(value)
+    else
+        printErr("No variable was found in the path, variable setting failure.")
+        return
+    end
 end
 
 ---@public
 ---获取变量
 ---@param path string 路径
----@param isMustBeTable boolean 是否一定是table
+---@param isSearchSpecialKeyType boolean 是否搜索特殊key类型(table、function...)
 ---@return table
 ---@return string|unknown
 ---@return any
-function Utils.getVariable(path, isMustBeTable)
+function Utils.getVariable(path, isSearchSpecialKeyType)
     -- print("getVariable", path)
     local scopeInfo = LuaDebug:getScopeInfo()
     local ret = { type = "nil", var = "nil" }
@@ -530,189 +673,127 @@ function Utils.getVariable(path, isMustBeTable)
         retTbkey = tostring(scopeInfo.struct.invalid)
     end
 
-    Utils.xpcall(
-        function()
-            local frameId = LuaDebug:getCurrentFrameId()
-            local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
-            local debugData = LuaDebug:getDebugData()
 
-            --获取额外变量值
-            local loadExtraVar
-            loadExtraVar = function(var, tb)
-                for i, v in ipairs(debugData.externalVariables) do
-                    local newVar = Utils.rawget(var, v, isMustBeTable)
-                    if newVar then
-                        if type(newVar) == "table" then
-                            for k2, v2 in pairs(newVar) do
-                                if Utils.isNil(Utils.rawget(tb, k2, isMustBeTable)) then
-                                    Utils.rawset(tb, k2, v2)
-                                end
-                            end
+    local frameId = LuaDebug:getCurrentFrameId()
+    local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
+    local debugData = LuaDebug:getDebugData()
 
-                            loadExtraVar(newVar, tb)
-                        else
-                            if Utils.isNil(Utils.rawget(tb, v, isMustBeTable)) then
-                                Utils.rawset(tb, v, newVar)
-                            end
-                        end
-                    end
-                end
-            end
-
-            local function getVar(var, k)
-                if Utils.isNil(var) then
-                    return nil
-                end
-
-                if type(var) == "table" then
-                    -- print(type(k),k)
-                    -- print("正常查询")
-                    --正常查询
-                    local v = Utils.rawget(var, k, isMustBeTable)
-                    if Utils.isNil(v) then
-                        v = Utils.rawget(var, tonumber(k), isMustBeTable)
-                    end
-
-                    --查询扩展数据
-                    if Utils.isNil(v) then
-                        -- print("查询扩展数据")
-                        local tb = {}
-                        loadExtraVar(var, tb)
-                        v = tb[k]
-                        if not v then
-                            v = tb[tonumber(k)]
+    --获取额外变量值
+    local loadExtraVar
+    loadExtraVar = function(var, tb)
+        local debugData = LuaDebug:getDebugData()
+        for i, v in ipairs(debugData.externalVariables) do
+            local newVar = Utils.safeGet(var, v)
+            if newVar then
+                if type(newVar) == "table" then
+                    for k2, v2 in pairs(newVar) do
+                        if Utils.isNil(tb[k2]) then
+                            tb[k2] = v2
                         end
                     end
 
-                    return v
-                elseif Utils.isCSharpTable(var) and Utils.isLoadedLuaDebugTool() then
-                    return CS.LuaDebugTool.GetCSharpValue(var, k)
-                end
-
-                return nil
-            end
-
-            local paths = strSplit(path, "-->")
-            local function findVar(var)
-                local tbkey = Utils.getTbKey(var)
-                for k, v in ipairs(paths) do
-                    local nextVar = getVar(var, v)
-                    if not Utils.isNil(nextVar) then
-                        if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
-                            var = nil
-                            tbkey = nil
-                            break
-                        else
-                            if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
-                                tbkey = Utils.getTbKey(nextVar)
-                            end
-
-                            var = nextVar
-                        end
-                    else
-                        var = nil
-                        tbkey = nil
-                        break
-                    end
-                end
-
-                return var, tbkey
-            end
-
-            local isFindOgiPath = scopeInfo.struct[paths[1]] and true or false
-            local var
-            local tbkey
-            if isFindOgiPath then
-                var, tbkey = findVar(vars)
-            else
-                --重新构造table，以定义查找顺序
-                local varTb = {
-                    { k = "locals", v = vars.locals },
-                    { k = "ups", v = vars.ups },
-                    { k = "global", v = vars.global },
-                    { k = "watch", v = vars.watch },
-                    { k = "invalid", v = vars.invalid }
-                }
-                for k, v in ipairs(varTb) do
-                    var, tbkey = findVar(v.v)
-                    -- print(v.k, var)
-                    if not Utils.isNil(var) then
-                        realPath = v.k .. "-->" .. path
-                        break
-                    end
-                end
-            end
-
-            local realVar = var
-            if not Utils.isNil(realVar) then
-                if type(realVar) == "table" then
-                    ret = { type = "table", var = {} }
-                    for k, v in pairs(realVar) do
-                        ret.var[tostring(k)] = Utils.createVariable(v)
-                    end
-
-                    Utils.findExtraVars(ret.var, realVar)
-                elseif Utils.isCSharpTable(realVar) then
-                    ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
-                elseif type(realVar) == "userdata" then
-                    ret = { type = realVar.GetType and CSHARP_BASE_VALUE[realVar:GetType():ToString()] or "unknown", var = realVar:ToString() }
+                    loadExtraVar(newVar, tb)
                 else
-                    ret = Utils.createVariable(realVar)
+                    if Utils.isNil(tb[v]) then
+                        tb[v] = newVar
+                    end
                 end
-
-                retTbkey = tbkey
             end
         end
-    )
+    end
+
+    local function getVar(var, k)
+        if Utils.isNil(var) then
+            return nil
+        end
+
+        local v, keyType = Utils.safeGet(var, k, isSearchSpecialKeyType)
+
+        --查询扩展数据
+        if Utils.isNil(v) then
+            -- print("查询扩展数据")
+            local tb = {}
+            loadExtraVar(var, tb)
+            v, keyType = Utils.safeGet(tb, k)
+        end
+
+        return v, keyType
+    end
+
+    local paths = strSplit(path, "-->")
+    local function searchVar(var)
+        local tbkey = Utils.getTbKey(var)
+        for k, v in ipairs(paths) do
+            local nextVar = getVar(var, v)
+            if not Utils.isNil(nextVar) then
+                if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
+                    var = nil
+                    tbkey = nil
+                    break
+                else
+                    if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
+                        tbkey = Utils.getTbKey(nextVar)
+                    end
+
+                    var = nextVar
+                end
+            else
+                var = nil
+                tbkey = nil
+                break
+            end
+        end
+
+        return var, tbkey
+    end
+
+    local isFindOgiPath = scopeInfo.struct[paths[1]] and true or false
+    local var
+    local tbkey
+    if isFindOgiPath then
+        var, tbkey = searchVar(vars)
+    else
+        --重新构造table，以定义查找顺序
+        local varTb = {
+            { k = "locals", v = vars.locals },
+            { k = "ups", v = vars.ups },
+            { k = "global", v = vars.global },
+            { k = "watch", v = vars.watch },
+            { k = "invalid", v = vars.invalid }
+        }
+        for k, v in ipairs(varTb) do
+            var, tbkey = searchVar(v.v)
+            -- print(v.k, var)
+            if not Utils.isNil(var) then
+                realPath = v.k .. "-->" .. path
+                break
+            end
+        end
+    end
+
+    local realVar = var
+    if not Utils.isNil(realVar) then
+        if type(realVar) == "table" then
+            ret = { type = "table", var = {} }
+            for k, v in pairs(realVar) do
+                ret.var[tostring(k)] = Utils.createVariable(v)
+            end
+
+            Utils.findExtraVars(ret.var, realVar)
+        elseif Utils.isCSharpTable(realVar) then
+            ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
+        elseif type(realVar) == "userdata" then
+            ret = { type = realVar.GetType and (CSHARP_BASE_VALUE[tostring(realVar:GetType())] or "unknown") or "unknown",
+                var = tostring(realVar) }
+        else
+            ret = Utils.createVariable(realVar)
+        end
+
+        retTbkey = tbkey
+    end
     -- dump(ret, "retTbkey", 3)
 
     return ret, retTbkey, realPath
-end
-
----@public
----监视变量
-function Utils.watchVariable(exp)
-    local frameId = LuaDebug:getCurrentFrameId()
-    local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
-
-    local fun = loadstring("return " .. exp)
-
-    local env = {}
-    for k, v in pairs(vars.locals) do
-        env[k] = v
-    end
-
-    for k, v in pairs(vars.ups) do
-        if Utils.isNil(env[k]) then
-            env[k] = v
-        end
-    end
-
-    for k, v in pairs(vars.global) do
-        if Utils.isNil(env[k]) then
-            env[k] = v
-        end
-    end
-
-    local ret
-    xpcall(
-        function()
-            setfenv(fun, env)
-            ret = { fun() }
-        end,
-        function(msg)
-            ret = nil
-        end
-    )
-    if ret then
-        if #ret == 0 then
-            return nil
-        elseif #ret == 1 then
-            return ret[1]
-        else
-            return ret
-        end
-    end
 end
 
 ---查看额外变量
@@ -731,7 +812,7 @@ function Utils.findExtraVars(ret, var)
 
     local getExtraVars
     getExtraVars = function(tb, key, prefix)
-        local newVar = Utils.rawget(tb, key)
+        local newVar = Utils.safeGet(tb, key)
         if newVar then
             if type(newVar) == "table" then
                 for k, v in pairs(newVar) do
@@ -744,7 +825,7 @@ function Utils.findExtraVars(ret, var)
                         end
 
                         cacheKeys[k] = true
-                        Utils.rawset(ret, newKey, Utils.createVariable(v))
+                        ret[newKey] = Utils.createVariable(v)
                     end
                 end
 
@@ -758,7 +839,7 @@ function Utils.findExtraVars(ret, var)
                 end
 
                 cacheKeys[key] = true
-                Utils.rawset(ret, newKey, Utils.createVariable(newVar))
+                ret[newKey] = Utils.createVariable(newVar)
             end
         end
     end
@@ -806,10 +887,14 @@ function Utils.xpcall(func)
     )
 end
 
-function Utils.tableMerge(tb1, tb2)
-    for k, v in pairs(tb2) do
-        if not tb1[k] then
-            tb1[k] = v
+function Utils.tableMerge(dst, src, isOverride, isDeep)
+    for k, v in pairs(src) do
+        if isOverride or not dst[k] then
+            if isDeep then
+                Utils.rawset(dst, k, v)
+            else
+                dst[k] = v
+            end
         end
     end
 end
@@ -834,7 +919,7 @@ function Utils.reloadLua(data)
                 package.loaded[luaPath] = nil
                 ---@diagnostic disable-next-line: undefined-field
                 local realTab = Utils.require(luaPath)
-                tableMerge(oldValue, realTab)
+                Utils.tableMerge(oldValue, realTab, true, true)
 
                 LuaDebug:getSupportSocket():showDialogMessage("重载成功")
             else
@@ -904,7 +989,10 @@ function Utils.comparePath(path1, path2)
 end
 
 ---@public
----执行代码
+---执行代码.
+---@param conditionStr string 表达式
+---@param level number 堆栈level
+---@return any
 function Utils.executeScript(conditionStr, level)
     level = level or 4
     local ret
@@ -947,6 +1035,64 @@ function Utils.executeScript(conditionStr, level)
         end
     )
     return ret
+end
+
+---@public
+---断点时执行代码
+---@param exp string 表达式
+---@param isSimpleRet boolean? 是否无须处理返回值
+---@return any
+function Utils.executeScriptInBreakPoint(exp, isSimpleRet)
+    local frameId = LuaDebug:getCurrentFrameId()
+    local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
+
+    local fun = loadstring("return " .. exp)
+
+    local env = {}
+    for k, v in pairs(vars.locals) do
+        env[k] = v
+    end
+
+    for k, v in pairs(vars.ups) do
+        if Utils.isNil(env[k]) then
+            env[k] = v
+        end
+    end
+
+    for k, v in pairs(vars.global) do
+        if Utils.isNil(env[k]) then
+            env[k] = v
+        end
+    end
+
+    local ret
+    xpcall(
+        function()
+            setfenv(fun, env)
+            if isSimpleRet then
+                ret = fun()
+            else
+                ret = { fun() }
+            end
+        end,
+        function(msg)
+            printErr(msg)
+            ret = nil
+        end
+    )
+    if ret then
+        if isSimpleRet then
+            return ret
+        else
+            if #ret == 0 then
+                return nil
+            elseif #ret == 1 then
+                return ret[1]
+            else
+                return ret
+            end
+        end
+    end
 end
 
 ---@type Utils

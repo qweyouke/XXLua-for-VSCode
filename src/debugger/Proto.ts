@@ -14,6 +14,7 @@ export const CMD = {
     stepOut: "stepOut",
     stop: "stop",
     getScopes: "getScopes",
+    setVariable: "setVariable",
     getVariable: "getVariable",
     watchVariable: "watchVariable",
     printConsole: "printConsole",

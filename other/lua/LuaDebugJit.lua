@@ -230,13 +230,16 @@ function LuaDebugJit:stopDebug()
 end
 
 ---@type LuaDebugJit
-local LuaDebug = LuaDebugJit.new()
+local instance = LuaDebugJit.new()
 xpcall(
     function()
-        ---@type LuaDebugJit
-        _G.LuaDebug = LuaDebug
+        _G.LuaDebug = instance
     end,
     function()
-        rawset(_G, "LuaDebug", LuaDebug)
+        rawset(_G, "LuaDebug", instance)
     end
 )
+if true then
+    return
+end
+_G.LuaDebug = instance

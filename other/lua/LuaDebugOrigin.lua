@@ -214,13 +214,16 @@ function LuaDebugOrigin:debug_hook(event, line)
 end
 
 ---@type LuaDebugOrigin
-local LuaDebug = LuaDebugOrigin.new()
+local instance = LuaDebugOrigin.new()
 xpcall(
     function()
-        ---@type LuaDebugOrigin
-        _G.LuaDebug = LuaDebug
+        _G.LuaDebug = instance
     end,
     function()
-        rawset(_G, "LuaDebug", LuaDebug)
+        rawset(_G, "LuaDebug", instance)
     end
 )
+if true then
+    return
+end
+_G.LuaDebug = instance

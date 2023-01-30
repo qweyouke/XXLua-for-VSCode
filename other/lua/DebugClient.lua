@@ -285,6 +285,21 @@ function DebugClient:sendWatch(exp, frameId, ret, tbkey, realPath)
     )
 end
 
+---发送设置变量
+---@param path string
+---@param frameId number
+---@param var VariableData 最终设置的值
+function DebugClient:sendSetVariable(path, frameId, var)
+    self:sendMsg(
+        Protocol.setVariable,
+        {
+            path = path,
+            frameId = frameId,
+            var = var
+        }
+    )
+end
+
 ---重置堆栈/异常情况的断点结束
 function DebugClient:resetStackInfo()
     self:sendMsg(Protocol.resetStackInfo)

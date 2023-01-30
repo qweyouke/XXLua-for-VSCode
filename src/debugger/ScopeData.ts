@@ -3,7 +3,8 @@
 import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { Handles } from 'vscode-debugadapter';
-import { CMD_C2D_GetScopes, CMD_C2D_GetVariable, VariableData, VariablePathData } from './DebugData';
+import { ClientVariableStruct, CMD_C2D_GetScopes, CMD_C2D_GetVariable, CMD_C2D_SetVariable, VariableData, VariablePathData } from './DebugData';
+import { PrintType } from "./DebugUtil";
 export var TABLE = "table";
 
 const REPLACE_EXTRA_REGEXP = /\s{1}\[.*?\]/;
@@ -14,8 +15,6 @@ export class ScopeData {
     data: CMD_C2D_GetScopes;
     //table唯一id <tbkey, id>
     private mTableRefIds: Map<string, number>;
-    //变量路径 <tbkey, path>
-    private mTablePaths: Map<string, string>;
     //变量路径 <path, pathData>
     private mLoadedPaths: Map<string, VariablePathData>;
     //变量<tbkey, <varKey, data>>
@@ -37,7 +36,6 @@ export class ScopeData {
         this.data = data;
         this.core = core;
         this.mTableRefIds = new Map<string, number>();
-        this.mTablePaths = new Map<string, string>();
         this.mLoadedPaths = new Map<string, VariablePathData>();
         this.mLoadedVars = new Map<string, DebugProtocol.Variable[]>();
         this.mIsLoadedFullTables = new Map<string, boolean>();
@@ -90,7 +88,6 @@ export class ScopeData {
     addPath(path: string, tbkey: string, varKey: string | undefined = undefined) {
         if (!this.mLoadedPaths.has(path)) {
             this.mLoadedPaths.set(path, { tbkey: tbkey, varKey: varKey });
-            this.mTablePaths.set(tbkey, path)
             // this.core.printConsole("addPath path:" + path + "   tbkey:" + tbkey + "   varKey:" + varKey);
         }
     }
@@ -99,7 +96,11 @@ export class ScopeData {
     getPathByRefId(refID: number) {
         const tbkey = this.getTbkey(refID);
         if (tbkey) {
-            return this.mTablePaths.get(tbkey);
+            for (var [key, value] of this.mLoadedPaths) {
+                if (value.tbkey === tbkey) {
+                    return key;
+                }
+            }
         }
     }
 
@@ -116,11 +117,11 @@ export class ScopeData {
     //通过路径获取变量
     getVariableByPath(path: string): VariableData | undefined {
         let pathData: VariablePathData | undefined = undefined;
-        
+
         if (STRUCT_LIST.indexOf(path) === -1) {
             pathData = this.mLoadedPaths.get(path);
         }
-            
+
         if (!pathData) {
             //不是传的全路径， 则从全路径缓存中去找值
             for (const prefixKey of STRUCT_LIST) {
@@ -194,7 +195,7 @@ export class ScopeData {
                 const varPath = path + "-->" + this.clearExternalKey(key);
                 if (value.type === TABLE) {
                     let newRefId = this.createRef(value.var);
-                    
+
                     variables.push({
                         name: key,
                         type: "",
@@ -236,6 +237,34 @@ export class ScopeData {
 
             this.addPath(path, tbkey, key);
             return { tbkey: tbkey, vars: value };
+        }
+    }
+
+    //设置变量
+    setVariable(refId: number, name: string, value: ClientVariableStruct) {
+        let variables = this.getTableVarByRefId(refId);
+        if (!variables) {
+            //变量不存在时，报错
+            this.core.printConsole("setVariable error: " + refId + "     " + name + "     " + value.var, PrintType.error)
+            return;
+        }
+        if (variables) {
+            for (let index = 0; index < variables.length; index++) {
+                const element = variables[index];
+                if (element.name === name) {
+                    if (value.type === TABLE) {
+                        let newRefId = this.createRef(value.var);
+                        element.type = "";
+                        element.value = value.var;
+                        element.variablesReference = newRefId;
+                    } else {
+                        element.type = value.type;
+                        element.value = value.type === "string" && "\"" + value.var + "\"" || value.var;
+                        element.variablesReference = 0;
+                    }
+                    break;
+                }
+            }
         }
     }
 }

@@ -50,7 +50,9 @@ local S2C_getScopes
 ---变量域变量结构
 ---@class ScopeInfoVariableStruct
 ---@field locals table 局部变量
+---@field localsIndex table<string, number> 局部变量域索引
 ---@field ups table 上层变量(闭包时才有)
+---@field upsIndex table<string, number> 上层变量域索引
 ---@field global table 全局变量
 ---@field watch table 监视变量
 ---@field invalid table
@@ -66,6 +68,14 @@ local ScopeInfo
 ---@field frameId number 堆栈索引
 ---@field isMustBeTable boolean 是否一定是table
 local S2C_getVariable
+
+---设置变量
+---@class S2C_setVariable
+---@field path string 变量table路径
+---@field frameId number 堆栈索引
+---@field name string 变量名
+---@field value string 变量值
+local S2C_setVariable
 
 ---监视变量
 ---@class S2C_watchVariable
@@ -150,6 +160,8 @@ local Protocol = {
     getScopes = "getScopes",
     --获取变量
     getVariable = "getVariable",
+    --设置变量
+    setVariable = "setVariable",
     --监视变量
     watchVariable = "watchVariable",
     --打印到控制台

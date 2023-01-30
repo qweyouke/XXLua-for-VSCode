@@ -87,5 +87,6 @@ return function(host, port)
     end
     xxlua_require("DebugUtils").require = require
 
+    LuaDebug:stopDebug()
     LuaDebug:startDebug(host, port)
 end

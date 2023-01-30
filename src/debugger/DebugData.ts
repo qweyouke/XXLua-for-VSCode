@@ -99,6 +99,16 @@ export interface CMD_C2D_GetVariable{
     vars: ClientVariableStruct
 }
 
+//网络消息 获取变量 Client to Debugger
+export interface CMD_C2D_SetVariable {
+    //请求路径
+    path?: string
+    //
+    frameId?: number
+    //设置的值
+    var: ClientVariableStruct
+}
+
 //网络消息 监视变量 Client to Debugger
 export interface CMD_C2D_WatchVariable {
     //表达式

@@ -25,8 +25,8 @@ xxlua_require("DebugFunctions")
 ---@field protected m_isStepOut boolean 是否单步跳出
 ---@field private m_hookCallCount number hook调用次数
 ---@field private m_lastReceiveTime number 最后一次receive时间
----@field private m_watchVars table<number, VariableData> 监视变量数据
 ---@field private m_lastNextTime number 最后一次单步跳过时间
+---@field private m_setVariableCache S2C_setVariable[]
 local DebugBase = xxlua_require("DebugClass")("DebugBase")
 
 local _yield = coroutine.yield
@@ -77,7 +77,7 @@ function DebugBase:ctor()
     self.m_hookCallCount = 0
     self.m_lastReceiveTime = 0
     self.m_breakLines = {}
-    self.m_watchVars = {}
+    self.m_setVariableCache = {}
     self:debugger_resetRun()
 end
 
@@ -244,7 +244,6 @@ function DebugBase:debugger_resetDebugInfo()
     self.m_isStepOut = false
     self.m_currentFrameId = nil
     self.m_scopeInfo = {}
-    self.m_watchVars = {}
 end
 
 ---@protected
@@ -331,7 +330,7 @@ function DebugBase:debugger_onLoop()
                                 local args = msg.args
                                 self.m_currentFrameId = args.frameId
 
-                                local ret = Utils.watchVariable(args.exp)
+                                local ret = Utils.executeScriptInBreakPoint(args.exp)
 
                                 --缓存监视变量
                                 self.m_currentStackInfo[args.frameId + 1].vars.watch[args.exp] = ret
@@ -353,6 +352,21 @@ function DebugBase:debugger_onLoop()
                                 self.m_debugSocket:sendWatch(args.exp, args.frameId, data, Utils.getTbKey(ret), "watch-" .. args.exp)
                             end
                         )
+                    elseif cmd == Protocol.setVariable then
+                        --设置变量
+                        table.insert(self.m_setVariableCache, msg.args)
+                        print("The variable change message was received, take effect by skipping a breakpoint.")
+                        -- Utils.xpcall(
+                        --     function()
+                        --         ---@type S2C_setVariable
+                        --         local args = msg.args
+                        --         self.m_currentFrameId = args.frameId
+
+                        --         local var = Utils.setVariable(args.path, args.name, args.value)
+
+                        --         self.m_debugSocket:sendSetVariable(args.path, args.frameId, var)
+                        --     end
+                        -- )
                     end
                 end
             end
@@ -495,9 +509,23 @@ function DebugBase:doReceiveSupportSocket()
     end
 end
 
----@protected
----命中断点
-function DebugBase:hitBreakPointWithStackInfo(stackInfo)
+---@public
+---命中断点 (开发者用)
+function DebugBase:hitBreakPoint(level)
+    if not self.m_initData then
+        return
+    end
+
+    if self:isInHitPoint() then
+        -- print("正在断点中，跳过断点\n", debug.traceback())
+        return
+    end
+
+    -- print("进入断点\n", debug.traceback())
+
+    level = level or 3
+    local stackInfo = Utils.getStackInfo(level + 1, true)
+
     self.m_currentStackInfo = stackInfo
 
     local stacks = {}
@@ -513,25 +541,20 @@ function DebugBase:hitBreakPointWithStackInfo(stackInfo)
 
     -- dump(infos,"hitBreakPoint")
     _resume(self.m_loop_coroutine, stacks)
+    self:checkSetVariable(level + 1)
 end
 
----@public
----命中断点 (开发者用)
-function DebugBase:hitBreakPoint(level)
-    if not self.m_initData then
-        return
+function DebugBase:checkSetVariable(level)
+    if next(self.m_setVariableCache) then
+        Utils.xpcall(
+            function()
+                for i, v in ipairs(self.m_setVariableCache) do
+                    Utils.setVariable(level + 4, v.path, v.name, v.value)
+                end
+            end
+        )
+        self.m_setVariableCache = {}
     end
-
-    if self:isInHitPoint() then
-        -- print("正在断点中，跳过断点\n", debug.traceback())
-        return
-    end
-
-    -- print("进入断点\n", debug.traceback())
-
-    level = level or 4
-    local stackInfo = Utils.getStackInfo(level, true)
-    self:hitBreakPointWithStackInfo(stackInfo)
 end
 
 ---@public

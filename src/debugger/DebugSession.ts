@@ -1,6 +1,6 @@
 //调试器基类
 import { LoggingDebugSession } from 'vscode-debugadapter';
-import { BreakInfo, IRequestArguments, CMD_C2D_GetScopes, StackTrack, Event_D2P_GetFullPath, Event_P2D_GetFullPath, CMD_C2D_GetVariable, CMD_C2D_WatchVariable, ErrorDefine, VariableData } from './DebugData';
+import { BreakInfo, IRequestArguments, CMD_C2D_GetScopes, StackTrack, Event_D2P_GetFullPath, Event_P2D_GetFullPath, CMD_C2D_GetVariable, CMD_C2D_SetVariable, CMD_C2D_WatchVariable, ErrorDefine, VariableData } from './DebugData';
 import { DebugUtil, PrintType } from './DebugUtil';
 import { ScopeData, TABLE } from './ScopeData';
 import * as Proto from './Proto';
@@ -347,6 +347,8 @@ export class DebugSession extends LoggingDebugSession {
                 this.emit(Proto.CMD.getScopes + args.frameId, args);
             } else if (cmd === Proto.CMD.getVariable) {
                 this.emit(Proto.CMD.getVariable + args.frameId + args.path, args);
+            } else if (cmd === Proto.CMD.setVariable) {
+                this.emit(Proto.CMD.setVariable + args.frameId + args.path, args);
             } else if (cmd === Proto.CMD.watchVariable) {
                 this.emit(Proto.CMD.watchVariable + args.frameId + args.exp, args);
             }
@@ -406,6 +408,7 @@ export class DebugSession extends LoggingDebugSession {
                 response.body.supportsHitConditionalBreakpoints = true;
                 response.body.supportsLogPoints = true;
                 response.body.supportsEvaluateForHovers = true;
+                response.body.supportsSetVariable = true;
                 this.sendResponse(response);
             };
             this.on(Proto.EVENT.initDebugEnv, onInitDebugEnv);
@@ -905,6 +908,32 @@ export class DebugSession extends LoggingDebugSession {
             });
         }
 
+    }
+
+    //from调试进程 设置变量
+    setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments, request?: DebugProtocol.Request | undefined): void {
+        // this.printConsole("setVariableRequest");
+        // this.printConsole("args:" + JSON.stringify(args));
+        // this.printConsole("-----------------------------------------");
+
+        const scopeData = this.mScopeDatas[this.mFrameId];
+        if (scopeData) {
+            const path = scopeData.getPathByRefId(args.variablesReference);
+            if (path) {
+                this.printConsole(path);
+            }
+            this.sendDebugMessage(Proto.CMD.setVariable, { frameId: this.mFrameId, path: path, name: args.name, value: args.value });
+            
+            // this.addSafeEvent(Proto.CMD.setVariable + this.mFrameId + path, true,
+            //     (data: CMD_C2D_SetVariable) => {
+            //         if (data.var) {
+            //             scopeData.setVariable(args.variablesReference, args.name, data.var);
+            //             this.sendResponse(response);
+            //         }
+            //     }
+            // );
+            
+        }
     }
 
     //from调试进程 暂停
