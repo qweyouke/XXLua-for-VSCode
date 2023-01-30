@@ -355,7 +355,10 @@ function DebugBase:debugger_onLoop()
                     elseif cmd == Protocol.setVariable then
                         --设置变量
                         table.insert(self.m_setVariableCache, msg.args)
-                        print("The variable change message was received, take effect by skipping a breakpoint.")
+                        ---@type S2C_setVariable
+                        local args = msg.args
+                        print(string.format("Ready to set variable \"%s\" to {%s}. Skip the current breakpoint to take effect"
+                            , args.name, args.value))
                         -- Utils.xpcall(
                         --     function()
                         --         ---@type S2C_setVariable
@@ -549,7 +552,7 @@ function DebugBase:checkSetVariable(level)
         Utils.xpcall(
             function()
                 for i, v in ipairs(self.m_setVariableCache) do
-                    Utils.setVariable(level + 4, v.path, v.name, v.value)
+                    Utils.setVariable(level + 1 + 3, v.path, v.name, v.value)
                 end
             end
         )

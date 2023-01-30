@@ -919,10 +919,7 @@ export class DebugSession extends LoggingDebugSession {
         const scopeData = this.mScopeDatas[this.mFrameId];
         if (scopeData) {
             const path = scopeData.getPathByRefId(args.variablesReference);
-            if (path) {
-                this.printConsole(path);
-            }
-            this.sendDebugMessage(Proto.CMD.setVariable, { frameId: this.mFrameId, path: path, name: args.name, value: args.value });
+            this.sendDebugMessage(Proto.CMD.setVariable, { frameId: this.mFrameId, path: path, name: DebugUtil.getInstance().filterExternalKey(args.name), value: args.value });
             
             // this.addSafeEvent(Proto.CMD.setVariable + this.mFrameId + path, true,
             //     (data: CMD_C2D_SetVariable) => {

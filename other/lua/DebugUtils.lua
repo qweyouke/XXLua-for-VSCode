@@ -340,8 +340,6 @@ function Utils.ParseCSharpValue(csharpVar)
         end
 
         if csharpVar then
-            -- print("getUserDataInfo")
-
             ---@type CSharp_ValueInfo
             local fields = CS.LuaDebugTool.ParseCSharpValue(csharpVar)
 
@@ -446,7 +444,8 @@ function Utils.createVariable(v)
             return { type = "table", var = Utils.getTbKey(v) }
         elseif type == "userdata" then
             ---@diagnostic disable-next-line: undefined-field
-            return { type = v.GetType and (CSHARP_BASE_VALUE[tostring(v:GetType())] or "unknown") or "unknown", var = tostring(v) }
+            return { type = v.GetType and (CSHARP_BASE_VALUE[tostring(v:GetType())] or "unknown") or "unknown",
+                var = tostring(v) }
         elseif type == "string" then
             v = Utils.filterSpecChar(tostring(v))
             return { type = "string", var = v }
@@ -502,7 +501,7 @@ function Utils.safeGet(tb, key, isSearchSpecialKeyType)
         if Utils.isNil(ret) and isSearchSpecialKeyType and type(key) == "string" then
             for k, v in pairs(tb) do
                 if tostring(k) == key then
-                    return v, "table"
+                    return v, type(k)
                 end
             end
         end
@@ -589,7 +588,6 @@ function Utils.setVariable(level, path, key, value)
 
         --查询扩展数据
         if Utils.isNil(v) then
-            -- print("查询扩展数据")
             local tb = {}
             loadExtraVar(var, tb)
             v, keyType = Utils.safeGet(tb, k)
@@ -599,31 +597,36 @@ function Utils.setVariable(level, path, key, value)
     end
 
     --上值table
-    local matchedTable
+    local upperTable
     for i, v in ipairs(paths) do
-        local nextVar = getVar(matchedTable or vars, v)
+        local nextVar = getVar(upperTable or vars, v)
         if not Utils.isNil(nextVar) then
             if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and i ~= #paths then
-                matchedTable = nil
+                upperTable = nil
                 break
             else
-                matchedTable = nextVar
+                upperTable = nextVar
             end
         else
-            matchedTable = nil
+            upperTable = nil
             break
         end
     end
-
-    if matchedTable then
+    if upperTable then
         --过滤不能设置变量的类型
-        local nowValue, keyType = getVar(matchedTable, key)
+        local nowValue, keyType = getVar(upperTable, key)
+        -- if nowValue == nil then
+        --     --没找到变量
+        --     printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
+        --     return
+        -- end
         local valueType = type(nowValue)
         if invalidValueTypeDict[valueType] then
-            printErr("Can't set value of type " .. valueType)
+            --无效类型
+            printErr("Can't set value of type:" .. valueType)
             return
         end
-        value = Utils.executeScript(value, level + 1)
+        value = Utils.executeScript(value, level + 1, true)
 
         if keyType == "number" then
             key = tonumber(key)
@@ -631,7 +634,7 @@ function Utils.setVariable(level, path, key, value)
             key = key == "true"
         elseif keyType == "table" or keyType == "function" or keyType == "userdata" then
             --特殊类型
-            for k, v in pairs(matchedTable) do
+            for k, v in pairs(upperTable) do
                 if tostring(k) == key then
                     key = k
                     break
@@ -639,19 +642,25 @@ function Utils.setVariable(level, path, key, value)
             end
         end
 
-        if matchedTable == vars.locals then
+        if upperTable == vars.locals then
             debug.setlocal(level, stackValue.localsIndex[key], value)
-        elseif matchedTable == vars.ups then
+        elseif upperTable == vars.ups then
             debug.setupvalue(stackValue.func, stackValue.upsIndex[key], value)
         else
-            Utils.rawset(matchedTable, key, value)
+            Utils.rawset(upperTable, key, value)
         end
 
 
-        print(string.format("Set the variable %s to %s", key, value or "nil"))
+        local valueStr
+        if value ~= nil then
+            valueStr = type(value) == "string" and string.format("\"%s\"", value) or value
+        else
+            valueStr = "nil"
+        end
+        print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
         return Utils.createVariable(value)
     else
-        printErr("No variable was found in the path, variable setting failure.")
+        printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
         return
     end
 end
@@ -664,7 +673,6 @@ end
 ---@return string|unknown
 ---@return any
 function Utils.getVariable(path, isSearchSpecialKeyType)
-    -- print("getVariable", path)
     local scopeInfo = LuaDebug:getScopeInfo()
     local ret = { type = "nil", var = "nil" }
     local realPath = path
@@ -711,7 +719,6 @@ function Utils.getVariable(path, isSearchSpecialKeyType)
 
         --查询扩展数据
         if Utils.isNil(v) then
-            -- print("查询扩展数据")
             local tb = {}
             loadExtraVar(var, tb)
             v, keyType = Utils.safeGet(tb, k)
@@ -763,7 +770,6 @@ function Utils.getVariable(path, isSearchSpecialKeyType)
         }
         for k, v in ipairs(varTb) do
             var, tbkey = searchVar(v.v)
-            -- print(v.k, var)
             if not Utils.isNil(var) then
                 realPath = v.k .. "-->" .. path
                 break
@@ -993,10 +999,10 @@ end
 ---@param conditionStr string 表达式
 ---@param level number 堆栈level
 ---@return any
-function Utils.executeScript(conditionStr, level)
-    level = level or 4
+function Utils.executeScript(conditionStr, level, isDisableErrorLog)
+    level = level or 3
     local ret
-    local vars = getStackValue(level)
+    local vars = getStackValue(level + 1)
     local env = {}
     local locals = vars.locals
     local ups = vars.ups
@@ -1024,14 +1030,17 @@ function Utils.executeScript(conditionStr, level)
 
     local fun = loadstring("return " .. conditionStr)
 
+    local info = debug.getinfo(level)
     xpcall(
         function()
             setfenv(fun, env)
             ret = fun()
         end,
         function(msg)
-            local info = debug.getinfo(level + 3)
-            printErr("表达式错误：" .. "from [" .. info.source .. "]:" .. info.currentline .. "\n" .. msg)
+            if not isDisableErrorLog then
+                --表达式错误
+                printErr(string.format("Expression error from [%s]:%d\n%s", info.source, info.currentline, msg))
+            end
         end
     )
     return ret

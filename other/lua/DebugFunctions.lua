@@ -159,7 +159,9 @@ function dump(value, desciption, nesting)
 
     local traceback = strSplit(debug.traceback("", 2), "\n")
     local function _dump(value, desciption, indent, nest, keylen)
-        desciption = desciption or "<var>"
+        if desciption == nil then
+            desciption = "<var>"
+        end
         local spc = ""
         if type(keylen) == "number" then
             spc = string.rep(" ", keylen - string.len(_k(desciption)))
@@ -201,6 +203,7 @@ function dump(value, desciption, nesting)
                     end
                 )
                 for i, k in ipairs(keys) do
+                    -- print(k)
                     _dump(values[k], k, indent2, nest + 1, keylen)
                 end
 

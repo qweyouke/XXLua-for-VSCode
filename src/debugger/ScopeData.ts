@@ -4,10 +4,10 @@ import { DebugSession } from "./DebugSession";
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { Handles } from 'vscode-debugadapter';
 import { ClientVariableStruct, CMD_C2D_GetScopes, CMD_C2D_GetVariable, CMD_C2D_SetVariable, VariableData, VariablePathData } from './DebugData';
-import { PrintType } from "./DebugUtil";
+import { PrintType, DebugUtil } from "./DebugUtil";
 export var TABLE = "table";
 
-const REPLACE_EXTRA_REGEXP = /\s{1}\[.*?\]/;
+
 const STRUCT_LIST = ["locals", "watch", "ups", "global", "invalid"];
 
 export class ScopeData {
@@ -166,11 +166,6 @@ export class ScopeData {
         }
     }
 
-    //清除附加参数名
-    private clearExternalKey(key: string) {
-        return key.replace(REPLACE_EXTRA_REGEXP, "");
-    }
-
     //加载变量
     loadVariables(data: CMD_C2D_GetVariable): VariableData {
         const tbkey = data.tbkey;
@@ -192,7 +187,7 @@ export class ScopeData {
             varList.sort();
             varList.forEach(key => {
                 const value = vars.var[key];
-                const varPath = path + "-->" + this.clearExternalKey(key);
+                const varPath = path + "-->" + DebugUtil.getInstance().filterExternalKey(key);
                 if (value.type === TABLE) {
                     let newRefId = this.createRef(value.var);
 

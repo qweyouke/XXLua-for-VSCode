@@ -36,6 +36,7 @@ const PRINT_TYPE_STR = {
     [PrintType.error]: "stderr"
 };
 
+const REPLACE_EXTRA_REGEXP = /\s{1}\[.*?\]/;
 
 
 export class DebugUtil {
@@ -76,6 +77,11 @@ export class DebugUtil {
 
     public getNowTimeStr(): string {
         return new Date().toLocaleTimeString(undefined, { hour12: false });
+    }
+
+    //清除附加参数名
+    public filterExternalKey(key: string) {
+        return key.replace(REPLACE_EXTRA_REGEXP, "");
     }
 
 }
