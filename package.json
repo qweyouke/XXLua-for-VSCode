@@ -190,6 +190,7 @@
                         "required": [
                             "clientHost",
                             "port",
+                            "errorPause",
                             "printType",
                             "externalVariables",
                             "filterFiles"
@@ -197,18 +198,27 @@
                         "properties": {
                             "clientHost": {
                                 "type": "string",
-                                "description": "--客户端的IP，主要用于客户端运行时附加调试",
+                                "description": "客户端的IP，主要用于客户端运行时附加调试",
                                 "default": "localhost"
                             },
                             "port": {
                                 "type": "number",
-                                "description": "--调试器的端口",
+                                "description": "调试器的端口",
                                 "default": 8896
+                            },
+                            "errorPause": {
+                                "type": "boolean",
+                                "description": "是否在错误时暂停",
+                                "default": true,
+                                "enum": [
+                                    true,
+                                    false
+                                ]
                             },
                             "printType": {
                                 "type": "number",
                                 "default": 1,
-                                "description": "--print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出",
+                                "description": "print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出",
                                 "enum": [
                                     1,
                                     2,
@@ -247,6 +257,7 @@
                     "request": "attach",
                     "clientHost": "localhost",
                     "port": 8896,
+                    "errorPause": false,
                     "printType": 1,
                     "externalVariables": [
                         "super",
@@ -267,108 +278,7 @@
                         "request": "attach",
                         "clientHost": "localhost",
                         "port": 8896,
-                        "printType": 1,
-                        "externalVariables": [
-                            "super",
-                            "_super",
-                            "__super"
-                        ],
-                        "filterFiles": [
-                            "Core/Utils/lazyRequire.lua",
-                            "Core/Class/ClassCreatorCopy.lua"
-                        ]
-                    }
-                }],
-                "languages": [
-                    "lua"
-                ]
-            },
-            {
-                "type": "XXLua_launch_lua",
-                "label": "XXLua_Launch_Debug",
-                "program": "./out/debugger/LaunchDebugAdapter.js",
-                "runtime": "node",
-                "configurationAttributes": {
-                    "launch": {
-                        "required": [
-                            "clientHost",
-                            "port",
-                            "printType",
-                            "externalVariables"
-                        ],
-                        "properties": {
-                            "clientHost": {
-                                "type": "string",
-                                "description": "--客户端的IP，主要用于客户端运行时附加调试",
-                                "default": "localhost"
-                            },
-                            "port": {
-                                "type": "number",
-                                "description": "--调试器的端口",
-                                "default": 8896
-                            },
-                            "printType": {
-                                "type": "number",
-                                "default": 1,
-                                "description": "--print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出",
-                                "enum": [
-                                    1,
-                                    2,
-                                    3
-                                ]
-                            },
-                            "externalVariables": {
-                                "type": "array",
-                                "default": [
-                                    "super",
-                                    "_super",
-                                    "__super"
-                                ],
-                                "description": "附加变量名列表 (如：查看变量时指向子类可直接查看父类数据，或查看元表二次、多次封装的数据)",
-                                "items": {
-                                    "type": "string"
-                                }
-                            },
-                            "filterFiles": {
-                                "type": "array",
-                                "default": [
-                                    "Core/Utils/lazyRequire.lua",
-                                    "Core/Class/ClassCreatorCopy.lua"
-                                ],
-                                "description": "过滤文件列表, 以下文件不会进入断点",
-                                "items": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                },
-                "initialConfigurations": [{
-                    "name": "XXLua_Launch_Debuger",
-                    "type": "XXLua_launch_lua",
-                    "request": "launch",
-                    "clientHost": "localhost",
-                    "port": 8896,
-                    "printType": 1,
-                    "externalVariables": [
-                        "super",
-                        "_super",
-                        "__super"
-                    ],
-                    "filterFiles": [
-                        "Core/Utils/lazyRequire.lua",
-                        "Core/Class/ClassCreatorCopy.lua"
-                    ]
-                }],
-                "configurationSnippets": [{
-                    "label": "XXLua_Launch_Debuger",
-                    "description": "XXLua Launch调试器， 暂不可用",
-                    "body": {
-                        "name": "XXLua_Launch_Debuger",
-                        "type": "XXLua_launch_lua",
-                        "request": "launch",
-                        "clientHost": "localhost",
-                        "port": 8896,
+                        "errorPause": false,
                         "printType": 1,
                         "externalVariables": [
                             "super",

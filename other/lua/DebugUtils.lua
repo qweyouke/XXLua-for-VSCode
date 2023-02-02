@@ -107,6 +107,24 @@ local strSplit = function(text, sep, plain, base_zero)
     return result
 end
 
+local _xpcall = xpcall
+--xpcall
+function Utils.xpcall(...)
+    return _xpcall(...)
+end
+
+--抛出错误的xpcall
+function Utils.tryCatch(func, errorFunc, ...)
+    return _xpcall(
+        func,
+        function(msg)
+            printErr(debug.traceback(msg, 2))
+            return errorFunc(msg)
+        end,
+        ...
+    )
+end
+
 --获取table地址
 function Utils.getTbKey(var)
     if type(var) == "userdata" and Utils.isLoadedLuaDebugTool() then
@@ -137,7 +155,7 @@ end
 --是否是c#表
 function Utils.isCSharpTable(var)
     local ret
-    Utils.xpcall(function()
+    Utils.tryCatch(function()
         ret = (type(var) == "userdata" and var.GetType and not CSHARP_BASE_VALUE[tostring(var:GetType())])
     end)
     return ret
@@ -148,7 +166,7 @@ function Utils.isLoadedLuaDebugTool()
     local tool = CS and CS.LuaDebugTool
     if tool then
         local ret
-        xpcall(
+        Utils.xpcall(
             function()
                 tool.GetTbKey("")
                 ret = true
@@ -378,7 +396,7 @@ function Utils.filterSpecChar(s)
             break
         end
 
-        xpcall(
+        Utils.xpcall(
             function()
                 if c < 192 then
                     if (c >= 32 and c <= 126) or DisableDelChars[c] then
@@ -458,7 +476,7 @@ end
 --安全获取table值
 function Utils.rawget(tb, key)
     local ret
-    xpcall(
+    Utils.xpcall(
         function()
             ret = tb[key]
         end,
@@ -515,7 +533,7 @@ end
 
 ---安全设置table变量
 function Utils.rawset(tb, key, value)
-    xpcall(
+    Utils.xpcall(
         function()
             tb[key] = value
         end,
@@ -936,15 +954,6 @@ function Utils.unpackStr(...)
     end
 end
 
-function Utils.xpcall(func)
-    xpcall(
-        func,
-        function(msg)
-            printErr(msg .. "\n" .. debug.traceback())
-        end
-    )
-end
-
 function Utils.tableMerge(dst, src, isOverride, isDeep)
     for k, v in pairs(src) do
         if isOverride or not dst[k] then
@@ -1083,7 +1092,7 @@ function Utils.executeScript(conditionStr, level, isDisableErrorLog)
     local fun = loadstring("return " .. conditionStr)
 
     local info = debug.getinfo(level)
-    xpcall(
+    Utils.xpcall(
         function()
             setfenv(fun, env)
             ret = fun()
@@ -1127,7 +1136,7 @@ function Utils.executeScriptInBreakPoint(exp, isSimpleRet)
     end
 
     local ret
-    xpcall(
+    Utils.xpcall(
         function()
             setfenv(fun, env)
             if isSimpleRet then

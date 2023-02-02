@@ -84,6 +84,17 @@ end
 ---@private
 ---初始化
 function DebugBase:initialize()
+    if self.m_initData.errorPause then
+        --初始化 报错时暂停
+        xpcall = function(func, errFunc, ...)
+            return Utils.tryCatch(func, function (msg, ...)
+                LuaDebug:hitBreakPoint(3)
+                if errFunc then
+                    return errFunc(msg, ...)
+                end
+            end, ...)
+        end
+    end
     self.m_loop_coroutine = coroutine.create(handler(self, self.debugger_onLoop))
     _resume(self.m_loop_coroutine)
     self:debugger_initDebugHook()
@@ -294,7 +305,7 @@ function DebugBase:debugger_onLoop()
                         self:debugger_setBreakInfo(args)
                     elseif cmd == Protocol.getScopes then
                         --获取变量域
-                        Utils.xpcall(
+                        Utils.tryCatch(
                             function()
                                 if not self.m_currentStackInfo then
                                     return
@@ -311,7 +322,7 @@ function DebugBase:debugger_onLoop()
                         )
                     elseif cmd == Protocol.getVariable then
                         --获取变量
-                        Utils.xpcall(
+                        Utils.tryCatch(
                             function()
 
                                 ---@type S2C_getVariable
@@ -324,7 +335,7 @@ function DebugBase:debugger_onLoop()
                         )
                     elseif cmd == Protocol.watchVariable then
                         --监视变量
-                        Utils.xpcall(
+                        Utils.tryCatch(
                             function()
                                 ---@type S2C_watchVariable
                                 local args = msg.args
@@ -337,7 +348,7 @@ function DebugBase:debugger_onLoop()
                         )
                     elseif cmd == Protocol.setVariable then
                         --设置变量
-                        Utils.xpcall(
+                        Utils.tryCatch(
                             function()
                                 ---@type S2C_setVariable
                                 local args = msg.args
@@ -499,6 +510,7 @@ end
 
 ---@public
 ---命中断点 (开发者用)
+---@param level number? 堆层级 默认不需要传
 function DebugBase:hitBreakPoint(level)
     if not self.m_initData then
         return
@@ -511,7 +523,7 @@ function DebugBase:hitBreakPoint(level)
 
     -- print("进入断点\n", debug.traceback())
 
-    level = level or 3
+    level = level or 2
     local stackInfo = Utils.getStackInfo(level + 1, true)
 
     self.m_currentStackInfo = stackInfo
@@ -534,7 +546,7 @@ end
 
 function DebugBase:checkSetVariable(level)
     if next(self.m_setVariableCache) then
-        Utils.xpcall(
+        Utils.tryCatch(
             function()
                 for i, v in ipairs(self.m_setVariableCache) do
                     Utils.setVariable(level + 1 + 3, v.path, v.name, v.value)
@@ -549,9 +561,11 @@ end
 ---远程附加调试 (给测试人员用)
 ---使用此方法，会阻塞线程
 ---然后开发人员可修改launch.json中的clientHost为测试机ip，然后启动调试器连接到测试机，保证socket能连上就能调试。
+---@param level number? 堆层级 默认不需要传
 function DebugBase:remoteHitBreakPoint(level)
+    level = level or 2
     if self.m_supportSocket then
-        self:hitBreakPoint(level)
+        self:hitBreakPoint(level + 1)
         return
     end
 
@@ -562,7 +576,7 @@ function DebugBase:remoteHitBreakPoint(level)
     --阻塞线程保留案发现场 等待远程连接
     while self.m_attachServer do
         if self:doReceiveAttachSocket() then
-            self:remoteHitBreakPoint(5)
+            self:remoteHitBreakPoint(level + 1)
             return
         end
     end
@@ -651,7 +665,7 @@ function DebugBase:startAttachServer()
     if not self.m_port then
         return
     end
-    Utils.xpcall(function()
+    Utils.tryCatch(function()
         if not self.m_attachServer then
             --附加服务器
             self.m_attachServer = xxlua_require("DebugServer").new()

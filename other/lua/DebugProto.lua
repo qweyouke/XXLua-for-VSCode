@@ -15,6 +15,7 @@ local DebugInitializeArgs
 ---@field request string
 ---@field clientHost string 客户端地址 
 ---@field port number 调试器的端口
+---@field errorPause boolean 是否在错误时暂停
 ---@field printType number print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出
 ---@field externalVariables string[] 附加变量名列表 (如：查看变量时指向子类可直接查看父类数据，或查看元表二次、多次封装的数据)
 ---@field filterFiles string[] 过滤文件列表, 以下文件不会进入断点

@@ -110,13 +110,10 @@ function DebugClient:sendMsg(command, args)
         command = command,
         arguments = args
     }
-    xpcall(
-        function()
+    Utils.tryCatch(
+        function ()
             local sendStr = json.encode(sendMsg) .. "\n"
             self.m_client:send(sendStr)
-        end,
-        function(msg)
-            print(msg, debug.traceback())
         end
     )
 end

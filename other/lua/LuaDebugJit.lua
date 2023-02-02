@@ -139,7 +139,7 @@ function LuaDebugJit:debug_hook(event, line)
             end
 
             if self.m_isStepIn then
-                self:hitBreakPoint()
+                self:hitBreakPoint(3)
                 return
             elseif self.m_isStepNext then
                 local isNext = self.m_isForceHitNextLine
@@ -167,7 +167,7 @@ function LuaDebugJit:debug_hook(event, line)
                         self.m_isForceHitNextLine = true
                     end
 
-                    self:hitBreakPoint()
+                    self:hitBreakPoint(3)
                     return
                 else
                     --单步跳过时内部函数执行行数超过阈值 跳过本次操作
@@ -180,7 +180,7 @@ function LuaDebugJit:debug_hook(event, line)
                 end
             elseif self.m_isStepOut then
                 if info.func == self.m_currentStackInfo[2].func then
-                    self:hitBreakPoint()
+                    self:hitBreakPoint(3)
                     return
                 end
             end
@@ -208,7 +208,7 @@ function LuaDebugJit:debug_hook(event, line)
 
                         --判断条件
                         if not v.condition or (v.condition and Utils.executeScript(v.condition)) then
-                            self:hitBreakPoint()
+                            self:hitBreakPoint(3)
                             return
                         end
                     end
@@ -231,7 +231,7 @@ end
 
 ---@type LuaDebugJit
 local instance = LuaDebugJit.new()
-xpcall(
+Utils.xpcall(
     function()
         _G.LuaDebug = instance
     end,

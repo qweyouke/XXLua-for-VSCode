@@ -123,7 +123,7 @@ function LuaDebugOrigin:debug_hook(event, line)
     if self.m_currentStackInfo then
         if event == "line" then
             if self.m_isStepIn then
-                self:hitBreakPoint()
+                self:hitBreakPoint(3)
                 return
             elseif self.m_isStepNext then
                 if self.m_stepInCount <= 0 then
@@ -138,7 +138,7 @@ function LuaDebugOrigin:debug_hook(event, line)
                     --     print(ret)
                     -- end
 
-                    self:hitBreakPoint()
+                    self:hitBreakPoint(3)
                     return
                 else
                     Utils.tableMerge(info, debug.getinfo(2, "f"))
@@ -157,7 +157,7 @@ function LuaDebugOrigin:debug_hook(event, line)
                             --     print(ret)
                             -- end
 
-                            self:hitBreakPoint()
+                            self:hitBreakPoint(3)
                             return
                         end
                     end
@@ -173,7 +173,7 @@ function LuaDebugOrigin:debug_hook(event, line)
             elseif self.m_isStepOut then
                 Utils.tableMerge(info, debug.getinfo(2, "f"))
                 if info.func == self.m_currentStackInfo[2].func then
-                    self:hitBreakPoint()
+                    self:hitBreakPoint(3)
                     return
                 end
             end
@@ -203,7 +203,7 @@ function LuaDebugOrigin:debug_hook(event, line)
 
                         --判断条件
                         if not v.condition or (v.condition and Utils.executeScript(v.condition)) then
-                            self:hitBreakPoint()
+                            self:hitBreakPoint(3)
                             return
                         end
                     end
@@ -215,7 +215,7 @@ end
 
 ---@type LuaDebugOrigin
 local instance = LuaDebugOrigin.new()
-xpcall(
+Utils.xpcall(
     function()
         _G.LuaDebug = instance
     end,
