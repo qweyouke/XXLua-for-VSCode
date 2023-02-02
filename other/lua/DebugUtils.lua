@@ -538,23 +538,8 @@ local invalidValueTypeDict = {
     ["null"] = true
 }
 
----@public
----设置变量
----@param level number
----@param path string
----@param key string | any
----@param value string
----@return VariableData
-function Utils.setVariable(level, path, key, value)
-    local stackValue = getStackValue(level + 1)
-    local vars = {
-        locals = stackValue.locals,
-        ups = stackValue.ups,
-        global = _G
-    }
-
-    local paths = strSplit(path, "-->")
-
+--#region 变量操作----------------------------------
+do
     --获取额外变量值
     local loadExtraVar
     loadExtraVar = function(var, tb)
@@ -596,60 +581,126 @@ function Utils.setVariable(level, path, key, value)
         return v, keyType
     end
 
-    --上值table
-    local upperTable
-    for i, v in ipairs(paths) do
-        local nextVar = getVar(upperTable or vars, v)
-        if not Utils.isNil(nextVar) then
-            if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and i ~= #paths then
-                upperTable = nil
-                break
-            else
-                upperTable = nextVar
-            end
-        else
-            upperTable = nil
-            break
-        end
-    end
-    if upperTable then
-        --过滤不能设置变量的类型
-        local nowValue, keyType = getVar(upperTable, key)
-        -- if nowValue == nil then
-        --     --没找到变量
-        --     printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
-        --     return
-        -- end
-        local valueType = type(nowValue)
-        if invalidValueTypeDict[valueType] then
-            --无效类型
-            printErr("Can't set value of type:" .. valueType)
+    ---查看额外变量
+    ---@param ret table 存储表
+    ---@param var table 目标表
+    local function traverseExtraVars(ret, var)
+        if type(ret) ~= "table" or type(var) ~= "table" then
             return
         end
-        value = Utils.executeScript(value, level + 1, true)
 
-        if keyType == "number" then
-            key = tonumber(key)
-        elseif keyType == "boolean" then
-            key = key == "true"
-        elseif keyType == "table" or keyType == "function" or keyType == "userdata" then
-            --特殊类型
-            for k, v in pairs(upperTable) do
-                if tostring(k) == key then
-                    key = k
-                    break
+        local cacheKeys = {}
+        for k, v in pairs(ret) do
+            cacheKeys[k] = true
+        end
+
+        local getExtraVars
+        getExtraVars = function(tb, key, prefix)
+            local newVar = Utils.safeGet(tb, key)
+            if newVar then
+                if type(newVar) == "table" then
+                    for k, v in pairs(newVar) do
+                        if Utils.isNil(cacheKeys[k]) then
+                            local newKey
+                            if prefix then
+                                newKey = k .. " [" .. prefix .. "." .. key .. "]"
+                            else
+                                newKey = k .. " [" .. key .. "]"
+                            end
+
+                            cacheKeys[k] = true
+                            ret[newKey] = Utils.createVariable(v)
+                        end
+                    end
+
+                    getExtraVars(newVar, key, prefix and prefix .. "." .. key or key)
+                elseif Utils.isNil(cacheKeys[key]) then
+                    local newKey
+                    if prefix then
+                        newKey = key .. " [" .. prefix .. "." .. key .. "]"
+                    else
+                        newKey = key .. " [" .. key .. "]"
+                    end
+
+                    cacheKeys[key] = true
+                    ret[newKey] = Utils.createVariable(newVar)
                 end
             end
         end
 
-        if upperTable == vars.locals then
-            debug.setlocal(level, stackValue.localsIndex[key], value)
-        elseif upperTable == vars.ups then
-            debug.setupvalue(stackValue.func, stackValue.upsIndex[key], value)
-        else
-            Utils.rawset(upperTable, key, value)
+        local debugData = LuaDebug:getDebugData()
+        for _, key in ipairs(debugData.externalVariables) do
+            getExtraVars(var, key)
+        end
+    end
+
+    local function transformValue(upperTable, value, valueType)
+        if valueType == "number" then
+            value = tonumber(value)
+        elseif valueType == "boolean" then
+            value = value == "true"
+        elseif valueType == "table" or valueType == "function" or valueType == "userdata" then
+            --特殊类型
+            for k, v in pairs(upperTable) do
+                if tostring(k) == value then
+                    value = k
+                    break
+                end
+            end
+        end
+        return value
+    end
+
+    ---@public
+    ---设置变量
+    ---@param path string
+    ---@param key string | any
+    ---@param value string
+    ---@return VariableData | boolean  --返回false时表示无法从堆栈设置变量，返回nil时表示完全无法设置变量
+    function Utils.trySetVariableFromStack(path, key, value)
+        local frameId = LuaDebug:getCurrentFrameId()
+        local stackList = LuaDebug:getCurrentStackInfo()
+        local stackInfo = stackList[frameId + 1]
+        local vars = stackInfo.vars
+
+        local paths = strSplit(path, "-->")
+        --上值table
+        local upperTable
+        for i, v in ipairs(paths) do
+            local nextVar = getVar(upperTable or vars, v)
+            if not Utils.isNil(nextVar) then
+                if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and i ~= #paths then
+                    upperTable = nil
+                    break
+                else
+                    upperTable = nextVar
+                end
+            else
+                upperTable = nil
+                break
+            end
         end
 
+        if upperTable == nil then
+            printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
+            return nil
+        end
+
+        local nowValue, keyType = getVar(upperTable, key)
+        local valueType = type(nowValue)
+        if invalidValueTypeDict[valueType] then
+            --无效类型
+            printErr("Can't set value of type:" .. valueType)
+            return nil
+        end
+
+        if upperTable == vars.locals or upperTable == vars.ups then
+            return false
+        end
+
+        key = transformValue(upperTable, key, keyType)
+        value = Utils.executeScriptInBreakPoint(value, true)
+        Utils.rawset(upperTable, key, value)
 
         local valueStr
         if value ~= nil then
@@ -659,201 +710,202 @@ function Utils.setVariable(level, path, key, value)
         end
         print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
         return Utils.createVariable(value)
-    else
-        printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
-        return
-    end
-end
-
----@public
----获取变量
----@param path string 路径
----@param isSearchSpecialKeyType boolean 是否搜索特殊key类型(table、function...)
----@return table
----@return string|unknown
----@return any
-function Utils.getVariable(path, isSearchSpecialKeyType)
-    local scopeInfo = LuaDebug:getScopeInfo()
-    local ret = { type = "nil", var = "nil" }
-    local realPath = path
-    local retTbkey
-    if scopeInfo then
-        retTbkey = tostring(scopeInfo.struct.invalid)
     end
 
+    ---@public
+    ---设置变量
+    ---@param level number
+    ---@param path string
+    ---@param key string | any
+    ---@param value string
+    ---@return VariableData
+    function Utils.setVariable(level, path, key, value)
+        local stackValue = getStackValue(level + 1)
+        local vars = {
+            locals = stackValue.locals,
+            ups = stackValue.ups,
+            global = _G,
+        }
 
-    local frameId = LuaDebug:getCurrentFrameId()
-    local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
-    local debugData = LuaDebug:getDebugData()
+        local paths = strSplit(path, "-->")
 
-    --获取额外变量值
-    local loadExtraVar
-    loadExtraVar = function(var, tb)
-        local debugData = LuaDebug:getDebugData()
-        for i, v in ipairs(debugData.externalVariables) do
-            local newVar = Utils.safeGet(var, v)
-            if newVar then
-                if type(newVar) == "table" then
-                    for k2, v2 in pairs(newVar) do
-                        if Utils.isNil(tb[k2]) then
-                            tb[k2] = v2
-                        end
-                    end
-
-                    loadExtraVar(newVar, tb)
+        --上值table
+        local upperTable
+        for i, v in ipairs(paths) do
+            local nextVar = getVar(upperTable or vars, v)
+            if not Utils.isNil(nextVar) then
+                if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and i ~= #paths then
+                    upperTable = nil
+                    break
                 else
-                    if Utils.isNil(tb[v]) then
-                        tb[v] = newVar
-                    end
+                    upperTable = nextVar
                 end
+            else
+                upperTable = nil
+                break
             end
         end
+        if upperTable then
+            --过滤不能设置变量的类型
+            local nowValue, keyType = getVar(upperTable, key)
+            local valueType = type(nowValue)
+            if invalidValueTypeDict[valueType] then
+                --无效类型
+                printErr("Can't set value of type:" .. valueType)
+                return
+            end
+
+            key = transformValue(upperTable, key, keyType)
+            value = Utils.executeScript(value, level + 1, true)
+
+            if upperTable == vars.locals then
+                debug.setlocal(level, stackValue.localsIndex[key], value)
+            elseif upperTable == vars.ups then
+                debug.setupvalue(stackValue.func, stackValue.upsIndex[key], value)
+            else
+                Utils.rawset(upperTable, key, value)
+            end
+
+
+            local valueStr
+            if value ~= nil then
+                valueStr = type(value) == "string" and string.format("\"%s\"", value) or value
+            else
+                valueStr = "nil"
+            end
+            print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
+            return Utils.createVariable(value)
+        else
+            printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
+            return
+        end
     end
 
-    local function getVar(var, k)
-        if Utils.isNil(var) then
-            return nil
+    ---@public
+    ---获取变量
+    ---@param path string 路径
+    ---@param isSearchSpecialKeyType boolean 是否搜索特殊key类型(table、function...)
+    ---@return table
+    ---@return string|unknown
+    ---@return any
+    function Utils.getVariable(path, isSearchSpecialKeyType)
+        local scopeInfo = LuaDebug:getScopeInfo()
+        local ret = { type = "nil", var = "nil" }
+        local realPath = path
+        local retTbkey
+        if scopeInfo then
+            retTbkey = tostring(scopeInfo.struct.invalid)
         end
 
-        local v, keyType = Utils.safeGet(var, k, isSearchSpecialKeyType)
+        local frameId = LuaDebug:getCurrentFrameId()
+        local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
 
-        --查询扩展数据
-        if Utils.isNil(v) then
-            local tb = {}
-            loadExtraVar(var, tb)
-            v, keyType = Utils.safeGet(tb, k)
-        end
+        local paths = strSplit(path, "-->")
+        local function searchVar(var)
+            local tbkey = Utils.getTbKey(var)
+            for k, v in ipairs(paths) do
+                local nextVar = getVar(var, v)
+                if not Utils.isNil(nextVar) then
+                    if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
+                        var = nil
+                        tbkey = nil
+                        break
+                    else
+                        if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
+                            tbkey = Utils.getTbKey(nextVar)
+                        end
 
-        return v, keyType
-    end
-
-    local paths = strSplit(path, "-->")
-    local function searchVar(var)
-        local tbkey = Utils.getTbKey(var)
-        for k, v in ipairs(paths) do
-            local nextVar = getVar(var, v)
-            if not Utils.isNil(nextVar) then
-                if type(nextVar) ~= "table" and not Utils.isCSharpTable(nextVar) and k ~= #paths then
+                        var = nextVar
+                    end
+                else
                     var = nil
                     tbkey = nil
                     break
-                else
-                    if type(nextVar) == "table" or Utils.isCSharpTable(nextVar) then
-                        tbkey = Utils.getTbKey(nextVar)
-                    end
-
-                    var = nextVar
                 end
-            else
-                var = nil
-                tbkey = nil
-                break
             end
+
+            return var, tbkey
         end
 
-        return var, tbkey
-    end
-
-    local isFindOgiPath = scopeInfo.struct[paths[1]] and true or false
-    local var
-    local tbkey
-    if isFindOgiPath then
-        var, tbkey = searchVar(vars)
-    else
-        --重新构造table，以定义查找顺序
-        local varTb = {
-            { k = "locals", v = vars.locals },
-            { k = "ups", v = vars.ups },
-            { k = "global", v = vars.global },
-            { k = "watch", v = vars.watch },
-            { k = "invalid", v = vars.invalid }
-        }
-        for k, v in ipairs(varTb) do
-            var, tbkey = searchVar(v.v)
-            if not Utils.isNil(var) then
-                realPath = v.k .. "-->" .. path
-                break
-            end
-        end
-    end
-
-    local realVar = var
-    if not Utils.isNil(realVar) then
-        if type(realVar) == "table" then
-            ret = { type = "table", var = {} }
-            for k, v in pairs(realVar) do
-                ret.var[tostring(k)] = Utils.createVariable(v)
-            end
-
-            Utils.findExtraVars(ret.var, realVar)
-        elseif Utils.isCSharpTable(realVar) then
-            ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
-        elseif type(realVar) == "userdata" then
-            ret = { type = realVar.GetType and (CSHARP_BASE_VALUE[tostring(realVar:GetType())] or "unknown") or "unknown",
-                var = tostring(realVar) }
+        local isFindOgiPath = scopeInfo.struct[paths[1]] and true or false
+        local var
+        local tbkey
+        if isFindOgiPath then
+            var, tbkey = searchVar(vars)
         else
-            ret = Utils.createVariable(realVar)
+            --重新构造table，以定义查找顺序
+            local varTb = {
+                { k = "locals", v = vars.locals },
+                { k = "ups", v = vars.ups },
+                { k = "global", v = vars.global },
+                { k = "watch", v = vars.watch },
+                { k = "invalid", v = vars.invalid }
+            }
+            for k, v in ipairs(varTb) do
+                var, tbkey = searchVar(v.v)
+                if not Utils.isNil(var) then
+                    realPath = v.k .. "-->" .. path
+                    break
+                end
+            end
         end
 
-        retTbkey = tbkey
-    end
-    -- dump(ret, "retTbkey", 3)
+        local realVar = var
+        if not Utils.isNil(realVar) then
+            if type(realVar) == "table" then
+                ret = { type = "table", var = {} }
+                for k, v in pairs(realVar) do
+                    ret.var[tostring(k)] = Utils.createVariable(v)
+                end
 
-    return ret, retTbkey, realPath
+                traverseExtraVars(ret.var, realVar)
+            elseif Utils.isCSharpTable(realVar) then
+                ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
+            elseif type(realVar) == "userdata" then
+                ret = { type = realVar.GetType and (CSHARP_BASE_VALUE[tostring(realVar:GetType())] or "unknown") or
+                    "unknown",
+                    var = tostring(realVar) }
+            else
+                ret = Utils.createVariable(realVar)
+            end
+
+            retTbkey = tbkey
+        end
+        -- dump(ret, "retTbkey", 3)
+
+        return ret, retTbkey, realPath
+    end
 end
 
----查看额外变量
----@param ret table 存储表
----@param var table 目标表
----@param isMustBeTable boolean 是否一定是table
-function Utils.findExtraVars(ret, var)
-    if type(ret) ~= "table" or type(var) ~= "table" then
-        return
-    end
+--#endregion 变量操作----------------------------------
 
-    local cacheKeys = {}
-    for k, v in pairs(ret) do
-        cacheKeys[k] = true
-    end
+---@public
+---监视
+---@param exp string 表达式
+---@return VariableData, string, string
+function Utils.watchExpression(exp)
+    local frameId = LuaDebug:getCurrentFrameId()
+    local vars = LuaDebug:getCurrentStackInfo()[frameId + 1].vars
 
-    local getExtraVars
-    getExtraVars = function(tb, key, prefix)
-        local newVar = Utils.safeGet(tb, key)
-        if newVar then
-            if type(newVar) == "table" then
-                for k, v in pairs(newVar) do
-                    if Utils.isNil(cacheKeys[k]) then
-                        local newKey
-                        if prefix then
-                            newKey = k .. " [" .. prefix .. "." .. key .. "]"
-                        else
-                            newKey = k .. " [" .. key .. "]"
-                        end
+    local ret = Utils.executeScriptInBreakPoint(exp)
+    --缓存监视变量
+    vars.watch[exp] = ret
 
-                        cacheKeys[k] = true
-                        ret[newKey] = Utils.createVariable(v)
-                    end
-                end
-
-                getExtraVars(newVar, key, prefix and prefix .. "." .. key or key)
-            elseif Utils.isNil(cacheKeys[key]) then
-                local newKey
-                if prefix then
-                    newKey = key .. " [" .. prefix .. "." .. key .. "]"
-                else
-                    newKey = key .. " [" .. key .. "]"
-                end
-
-                cacheKeys[key] = true
-                ret[newKey] = Utils.createVariable(newVar)
-            end
+    local var
+    local type = type(ret)
+    if type == "table" then
+        var = { type = "table", var = {} }
+        for k, v in pairs(ret) do
+            var.var[tostring(k)] = Utils.createVariable(v)
         end
+    elseif type == "userdata" then
+        var = { type = "table", var = Utils.ParseCSharpValue(ret) }
+    else
+        var = Utils.createVariable(ret)
     end
 
-    local debugData = LuaDebug:getDebugData()
-    for _, key in ipairs(debugData.externalVariables) do
-        getExtraVars(var, key)
-    end
+    --返回变量数据，tbkey，realPath
+    return var, Utils.getTbKey(ret), "watch-->" .. exp
 end
 
 ---将多个参数字符串连接起来
@@ -1085,11 +1137,11 @@ function Utils.executeScriptInBreakPoint(exp, isSimpleRet)
             end
         end,
         function(msg)
-            printErr(msg)
+            -- printErr(msg)
             ret = nil
         end
     )
-    if ret then
+    if ret ~= nil then
         if isSimpleRet then
             return ret
         else

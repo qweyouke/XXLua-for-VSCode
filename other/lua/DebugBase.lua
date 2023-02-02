@@ -53,7 +53,7 @@ debug.sethook = function(...)
     if debugHook then
         local newHook = (args[1] and type(args[1]) == "function") and args[1] or args[2]
         if newHook and newHook ~= debugHook then
-            printWarn(debug.traceback("Setting hook functions outside the debugger has invalidated the debugger",2))
+            printWarn(debug.traceback("Setting hook functions outside the debugger has invalidated the debugger", 2))
         end
     end
 
@@ -330,46 +330,31 @@ function DebugBase:debugger_onLoop()
                                 local args = msg.args
                                 self.m_currentFrameId = args.frameId
 
-                                local ret = Utils.executeScriptInBreakPoint(args.exp)
+                                local var, tbkey, realPath = Utils.watchExpression(args.exp)
 
-                                --缓存监视变量
-                                self.m_currentStackInfo[args.frameId + 1].vars.watch[args.exp] = ret
-
-
-                                local data
-                                local type = type(ret)
-                                if type == "table" then
-                                    data = { type = "table", var = {} }
-                                    for k, v in pairs(ret) do
-                                        data.var[tostring(k)] = Utils.createVariable(v)
-                                    end
-                                elseif type == "userdata" then
-                                    data = { type = "table", var = Utils.ParseCSharpValue(ret) }
-                                else
-                                    data = Utils.createVariable(ret)
-                                end
-
-                                self.m_debugSocket:sendWatch(args.exp, args.frameId, data, Utils.getTbKey(ret), "watch-" .. args.exp)
+                                self.m_debugSocket:sendWatch(args.exp, args.frameId, var, tbkey, realPath)
                             end
                         )
                     elseif cmd == Protocol.setVariable then
                         --设置变量
-                        table.insert(self.m_setVariableCache, msg.args)
-                        ---@type S2C_setVariable
-                        local args = msg.args
-                        print(string.format("Ready to set variable \"%s\" to {%s}. Skip the current breakpoint to take effect"
-                            , args.name, args.value))
-                        -- Utils.xpcall(
-                        --     function()
-                        --         ---@type S2C_setVariable
-                        --         local args = msg.args
-                        --         self.m_currentFrameId = args.frameId
+                        Utils.xpcall(
+                            function()
+                                ---@type S2C_setVariable
+                                local args = msg.args
+                                self.m_currentFrameId = args.frameId
 
-                        --         local var = Utils.setVariable(args.path, args.name, args.value)
+                                --先尝试从堆栈中设置变量
+                                local var = Utils.trySetVariableFromStack(args.path, args.name, args.value)
 
-                        --         self.m_debugSocket:sendSetVariable(args.path, args.frameId, var)
-                        --     end
-                        -- )
+                                if var then
+                                    self.m_debugSocket:sendSetVariable(args.path, args.frameId, var)
+                                elseif var == false then
+                                    --堆栈中没有找到变量，缓存起来，等待协程yield（程序继续运行）时设置
+                                    table.insert(self.m_setVariableCache, msg.args)
+                                    print(string.format("Ready to set variable \"%s\" to {%s}. Skip the current breakpoint to take effect", args.name, args.value))
+                                end
+                            end
+                        )
                     end
                 end
             end
@@ -636,7 +621,7 @@ function DebugBase:startDebug(host, port)
 
     self:closeAttachServer()
 
-    print(string.format("Try to connect the debugger(%s:%d)",host, port ))
+    print(string.format("Try to connect the debugger(%s:%d)", host, port))
 
     --辅助socket
     self.m_supportSocket = xxlua_require("DebugClient").new()

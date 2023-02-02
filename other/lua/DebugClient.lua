@@ -99,8 +99,7 @@ end
 ---发送数据
 ---@param command Protocol
 ---@param args table
----@param isSendLength boolean
-function DebugClient:sendMsg(command, args, isSendLength)
+function DebugClient:sendMsg(command, args)
     -- print(command)
     if not self:isConnection() then
         printErr("The socket is not connected")

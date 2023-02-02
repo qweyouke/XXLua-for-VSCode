@@ -921,15 +921,14 @@ export class DebugSession extends LoggingDebugSession {
             const path = scopeData.getPathByRefId(args.variablesReference);
             this.sendDebugMessage(Proto.CMD.setVariable, { frameId: this.mFrameId, path: path, name: DebugUtil.getInstance().filterExternalKey(args.name), value: args.value });
             
-            // this.addSafeEvent(Proto.CMD.setVariable + this.mFrameId + path, true,
-            //     (data: CMD_C2D_SetVariable) => {
-            //         if (data.var) {
-            //             scopeData.setVariable(args.variablesReference, args.name, data.var);
-            //             this.sendResponse(response);
-            //         }
-            //     }
-            // );
-            
+            this.addSafeEvent(Proto.CMD.setVariable + this.mFrameId + path, true,
+                (data: CMD_C2D_SetVariable) => {
+                    if (data.var) {
+                        scopeData.setVariable(args.variablesReference, args.name, data.var);
+                        this.sendResponse(response);
+                    }
+                }
+            );
         }
     }
 

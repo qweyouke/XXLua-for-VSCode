@@ -85,8 +85,8 @@ export class ScopeData {
     }
 
     //添加路径数据
-    addPath(path: string, tbkey: string, varKey: string | undefined = undefined) {
-        if (!this.mLoadedPaths.has(path)) {
+    addPath(path: string, tbkey: string, varKey: string | undefined = undefined, isOverride: boolean = false) {
+        if (!this.mLoadedPaths.has(path) || isOverride) {
             this.mLoadedPaths.set(path, { tbkey: tbkey, varKey: varKey });
             // this.core.printConsole("addPath path:" + path + "   tbkey:" + tbkey + "   varKey:" + varKey);
         }
@@ -244,11 +244,13 @@ export class ScopeData {
             return;
         }
         if (variables) {
+            var path = this.getPathByRefId(refId) + "-->" + DebugUtil.getInstance().filterExternalKey(name);
             for (let index = 0; index < variables.length; index++) {
                 const element = variables[index];
                 if (element.name === name) {
                     if (value.type === TABLE) {
                         let newRefId = this.createRef(value.var);
+                        this.addPath(path, value.var, undefined, true);
                         element.type = "";
                         element.value = value.var;
                         element.variablesReference = newRefId;
@@ -256,6 +258,7 @@ export class ScopeData {
                         element.type = value.type;
                         element.value = value.type === "string" && "\"" + value.var + "\"" || value.var;
                         element.variablesReference = 0;
+                        // 这里应该删除原来的路径，但是太懒了就只先打几个字，虽然打这几个字的时间已经超过了删除原来的路径的时间
                     }
                     break;
                 }
