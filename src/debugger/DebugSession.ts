@@ -147,8 +147,8 @@ export class DebugSession extends LoggingDebugSession {
             }
 
             if (this.mDebugData.errorPause === undefined) {
-                this.mDebugData.errorPause = true;
-                this.printConsole("The debugger configuration field 'errorPause' does not exist in the launch.json file, set default value true", PrintType.warning);
+                this.mDebugData.errorPause = false;
+                this.printConsole("The debugger configuration field 'errorPause' does not exist in the launch.json file, set default value false", PrintType.warning);
             }
             if (this.mDebugData.expensiveCallNotifyThresholds === undefined) {
                 this.mDebugData.expensiveCallNotifyThresholds = 0.125;

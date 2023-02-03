@@ -210,7 +210,7 @@
                             "errorPause": {
                                 "type": "boolean",
                                 "description": "是否在错误时暂停",
-                                "default": true,
+                                "default": false,
                                 "enum": [
                                     true,
                                     false
@@ -263,7 +263,7 @@
                     "request": "attach",
                     "clientHost": "localhost",
                     "port": 8896,
-                    "errorPause": true,
+                    "errorPause": false,
                     "printType": 1,
                     "expensiveCallNotifyThresholds": 0.125,
                     "externalVariables": [
@@ -285,7 +285,7 @@
                         "request": "attach",
                         "clientHost": "localhost",
                         "port": 8896,
-                        "errorPause": true,
+                        "errorPause": false,
                         "printType": 1,
                         "expensiveCallNotifyThresholds": 0.125,
                         "externalVariables": [
