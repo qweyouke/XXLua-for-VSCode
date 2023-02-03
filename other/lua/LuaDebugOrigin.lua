@@ -91,22 +91,17 @@ function LuaDebugOrigin:debug_hook(event, line)
         return
     end
 
-    if not self.m_isInRun then
-        if event == "call" then
-            self:AddStepInCount()
-        elseif event == "tail call" then
-            local info = debug.getinfo(2, "lS")
-            if info.currentline ~= info.lastlinedefined then
-                self:AddStepInCount()
-            end
-        elseif event == "return" or event == "tail return" then
-            self:SubStepInCount()
-        end
-    end
-
     local info = debug.getinfo(2, "S")
     if info.source == "=[C]" or info.source == "[C]" then
         return
+    end
+
+    if not self.m_isInRun then
+        if event == "call" then
+            self:AddStepInCount()
+        elseif event == "return" or event == "tail return" then
+            self:SubStepInCount()
+        end
     end
 
     local filePath, fileName = Utils.getFilePathInfo(info.source)

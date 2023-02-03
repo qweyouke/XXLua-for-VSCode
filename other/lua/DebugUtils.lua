@@ -109,17 +109,25 @@ end
 
 local _xpcall = xpcall
 --xpcall
+---@param f     async fun(...):...
+---@param msgh  function
+---@param arg1? any
+---@return boolean success
+---@return any result
+---@return any ...
 function Utils.xpcall(...)
     return _xpcall(...)
 end
 
 --抛出错误的xpcall
 function Utils.tryCatch(func, errorFunc, ...)
-    return _xpcall(
+    return Utils.xpcall(
         func,
         function(msg)
             printErr(debug.traceback(msg, 2))
-            return errorFunc(msg)
+            if errorFunc then
+                return errorFunc(msg)
+            end
         end,
         ...
     )
@@ -532,15 +540,22 @@ function Utils.safeGet(tb, key, isSearchSpecialKeyType)
 end
 
 ---安全设置table变量
+---@param tb any
+---@param key any
+---@param value any
+---@return boolean
 function Utils.rawset(tb, key, value)
+    local ret = false
     Utils.xpcall(
         function()
             tb[key] = value
+            ret = true
         end,
         function()
-            rawset(tb, key, value)
+            ret = pcall(rawset, tb, key, value)
         end
     )
+    return ret
 end
 
 ---无法设置变量的类型。
@@ -718,16 +733,19 @@ do
 
         key = transformValue(upperTable, key, keyType)
         value = Utils.executeScriptInBreakPoint(value, true)
-        Utils.rawset(upperTable, key, value)
-
-        local valueStr
-        if value ~= nil then
-            valueStr = type(value) == "string" and string.format("\"%s\"", value) or value
+        if Utils.rawset(upperTable, key, value) then
+            local valueStr
+            if value ~= nil then
+                valueStr = type(value) == "string" and string.format("\"%s\"", value) or value
+            else
+                valueStr = "nil"
+            end
+            print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
+            return Utils.createVariable(value)
         else
-            valueStr = "nil"
+            printErr(string.format("Setting variable \"%s\" failure.", key))
+            return nil
         end
-        print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
-        return Utils.createVariable(value)
     end
 
     ---@public
@@ -776,23 +794,30 @@ do
             key = transformValue(upperTable, key, keyType)
             value = Utils.executeScript(value, level + 1, true)
 
+            local ret 
             if upperTable == vars.locals then
                 debug.setlocal(level, stackValue.localsIndex[key], value)
+                ret = true
             elseif upperTable == vars.ups then
                 debug.setupvalue(stackValue.func, stackValue.upsIndex[key], value)
+                ret = true
             else
-                Utils.rawset(upperTable, key, value)
+                ret = Utils.rawset(upperTable, key, value)
             end
 
-
-            local valueStr
-            if value ~= nil then
-                valueStr = type(value) == "string" and string.format("\"%s\"", value) or value
+            if ret then
+                local valueStr
+                if value ~= nil then
+                    valueStr = type(value) == "string" and string.format("\"%s\"", value) or value
+                else
+                    valueStr = "nil"
+                end
+                print(string.format("Setting variable \"%s\" to {%s}. Skip the current breakpoint to take effect", key,
+                    valueStr))
+                return Utils.createVariable(value)
             else
-                valueStr = "nil"
+                printErr(string.format("Setting variable \"%s\" failure.", key))
             end
-            print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
-            return Utils.createVariable(value)
         else
             printErr(string.format("The variable \"%s\" does not exist, setting failure.", key))
             return

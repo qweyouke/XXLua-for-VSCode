@@ -60,7 +60,6 @@ debug.sethook = function(...)
     _sethook(...)
 end
 
-
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
 ---@type Protocol
@@ -87,7 +86,7 @@ function DebugBase:initialize()
     if self.m_initData.errorPause then
         --初始化 报错时暂停
         xpcall = function(func, errFunc, ...)
-            return Utils.tryCatch(func, function (msg, ...)
+            return Utils.tryCatch(func, function(msg, ...)
                 LuaDebug:hitBreakPoint(3)
                 if errFunc then
                     return errFunc(msg, ...)
@@ -97,7 +96,12 @@ function DebugBase:initialize()
     end
     self.m_loop_coroutine = coroutine.create(handler(self, self.debugger_onLoop))
     _resume(self.m_loop_coroutine)
-    self:debugger_initDebugHook()
+
+    if self.m_isHookEnabled then
+        self:debugger_initDebugHook("lrc")
+    else
+        self:debugger_initDebugHook("c")
+    end
 end
 
 ---@public
@@ -206,11 +210,15 @@ function DebugBase:debugger_setBreakInfo(data)
         end
     end
 
-    if not self.m_isHookEnabled then
-        --检查是否需要断点
-        for k, v in pairs(self.m_breakPoints) do
-            self.m_isHookEnabled = true
-            break
+    local isHookEnabled = next(self.m_breakPoints) and true
+    if self.m_isHookEnabled ~= isHookEnabled then
+        self.m_isHookEnabled = isHookEnabled
+        if self.m_initData and self.m_supportSocket then
+            if isHookEnabled then
+                self:debugger_initDebugHook("lrc")
+            else
+                self:debugger_initDebugHook("c")
+            end
         end
     end
 end
@@ -232,9 +240,10 @@ end
 
 ---@protected
 ---设置调试hook
-function DebugBase:debugger_initDebugHook()
+---@param mask hookmask
+function DebugBase:debugger_initDebugHook(mask)
     self.m_hook_func = handler(self, self.debug_hook)
-    self.m_hook_type = "lrc"
+    self.m_hook_type = mask or "lrc"
     debug.sethook(self.m_hook_func, self.m_hook_type)
 end
 
@@ -362,7 +371,8 @@ function DebugBase:debugger_onLoop()
                                 elseif var == false then
                                     --堆栈中没有找到变量，缓存起来，等待协程yield（程序继续运行）时设置
                                     table.insert(self.m_setVariableCache, msg.args)
-                                    print(string.format("Ready to set variable \"%s\" to {%s}. Skip the current breakpoint to take effect", args.name, args.value))
+                                    print(string.format("Ready to set variable \"%s\" to {%s}. Skip the current breakpoint to take effect"
+                                        , args.name, args.value))
                                 end
                             end
                         )
@@ -510,7 +520,7 @@ end
 
 ---@public
 ---命中断点 (开发者用)
----@param level number? 堆层级 默认不需要传
+---@param level number? 堆层级 一般调用不需要传
 function DebugBase:hitBreakPoint(level)
     if not self.m_initData then
         return
@@ -561,7 +571,7 @@ end
 ---远程附加调试 (给测试人员用)
 ---使用此方法，会阻塞线程
 ---然后开发人员可修改launch.json中的clientHost为测试机ip，然后启动调试器连接到测试机，保证socket能连上就能调试。
----@param level number? 堆层级 默认不需要传
+---@param level number? 堆层级 一般调用不需要传
 function DebugBase:remoteHitBreakPoint(level)
     level = level or 2
     if self.m_supportSocket then

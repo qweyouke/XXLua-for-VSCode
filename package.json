@@ -257,7 +257,7 @@
                     "request": "attach",
                     "clientHost": "localhost",
                     "port": 8896,
-                    "errorPause": false,
+                    "errorPause": true,
                     "printType": 1,
                     "externalVariables": [
                         "super",
@@ -278,7 +278,7 @@
                         "request": "attach",
                         "clientHost": "localhost",
                         "port": 8896,
-                        "errorPause": false,
+                        "errorPause": true,
                         "printType": 1,
                         "externalVariables": [
                             "super",
