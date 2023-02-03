@@ -2,6 +2,7 @@
 ### Version:1.2.0   2023年2月3日
 - 增加设置变量功能
 - Launch配置增加字段：errorPause（错误时暂停）
+- Launch配置增加字段：expensiveCallNotifyThresholds（单步跳过时，函数调用耗时超过此时间时将会被通知）
 - 优化调试器未设置断点时的性能
 - 修复bug:
     - 监视变量时的对象为table时，无法进一步打开table的问题

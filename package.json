@@ -229,7 +229,7 @@
                             "expensiveCallNotifyThresholds": {
                                 "type": "number",
                                 "default": 0.125,
-                                "description": "单步跳过时，函数调用耗时超过此时间时（秒）将会被通知。由于调试器也会影响代码执行效率，此提示仅供参考"
+                                "description": "单步跳过时，函数调用耗时超过此时间时（秒）将会被通知。由于调试器本身也会影响代码执行效率，此提示仅供参考"
                             },
                             "externalVariables": {
                                 "type": "array",
