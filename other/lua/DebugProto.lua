@@ -16,7 +16,8 @@ local DebugInitializeArgs
 ---@field clientHost string 客户端地址 
 ---@field port number 调试器的端口
 ---@field errorPause boolean 是否在错误时暂停
----@field printType number print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出
+---@field printType number print函数输出方式 1 VSCode控制台和系统输出，2 仅VSCode控制台输出，3 仅系统输出
+---@field expensiveCallNotifyThresholds number 单步跳过时，函数调用耗时超过此时间时（秒）将会被通知。由于调试器也会影响代码执行效率，此提示仅供参考
 ---@field externalVariables string[] 附加变量名列表 (如：查看变量时指向子类可直接查看父类数据，或查看元表二次、多次封装的数据)
 ---@field filterFiles string[] 过滤文件列表, 以下文件不会进入断点
 ---@field __configurationTarget number 

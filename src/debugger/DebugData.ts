@@ -8,7 +8,9 @@ export interface IRequestArguments {
     request: string;
     clientHost: string;
     port: number;
+    errorPause: boolean;
     printType: number;
+    expensiveCallNotifyThresholds: number;
     externalVariables: string[];
     filterFiles: string[];
     localRoot: string;

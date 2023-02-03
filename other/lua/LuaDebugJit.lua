@@ -4,7 +4,6 @@
 ---@field protected super DebugBase 父类
 ---@field private m_continueStackInfo StackInfo[] 跳过断点时的堆栈信息
 ---@field private m_stepNextTime number 单步跳过断点时hook的执行次数
----@field private m_stepNextDate number 单步跳过断点时的时间
 ---@field private m_isForceHitNextLine boolean 是否强制命中下一行断点
 local LuaDebugJit = xxlua_require("DebugClass") ("LuaDebugJit", xxlua_require("DebugBase"))
 ---@type Utils
@@ -32,13 +31,6 @@ end
 function LuaDebugJit:debugger_resetRun()
     self.super.debugger_resetRun(self)
     self.m_isForceHitNextLine = false
-end
-
----@protected
----单步跳过
-function LuaDebugJit:onStepNext()
-    self.m_stepNextDate = os.clock()
-    self.super.onStepNext(self)
 end
 
 ---@protected
@@ -167,12 +159,20 @@ function LuaDebugJit:debug_hook(event, line)
                         self.m_isForceHitNextLine = true
                     end
 
+                    -- 单步跳过时，如果执行时间超过阈值，则打印出来
+                    local dt = os.clock() - self.m_lastNextTime
+                    if dt > self.m_initData.expensiveCallNotifyThresholds then
+                        local ret = string.format("%s[%s():%d] %0.6f", self.m_currentStackInfo[1].fileName,
+                            self.m_currentStackInfo[1].functionName, self.m_currentStackInfo[1].currentline, dt)
+                        printWarn("Expensive call: ", ret)
+                    end
+
                     self:hitBreakPoint(3)
                     return
                 else
                     --单步跳过时内部函数执行行数超过阈值 跳过本次操作
                     self.m_stepNextTime = self.m_stepNextTime + 1
-                    if self.m_stepNextTime >= 1000000 or os.clock() - self.m_stepNextDate > 15 then
+                    if self.m_stepNextTime >= 1000000 or os.clock() - self.m_lastNextTime > 15 then
                         printWarn("代码执行异常, 重置堆栈信息")
                         self.m_supportSocket:resetStackInfo()
                         self:debugger_resetRun()

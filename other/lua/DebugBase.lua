@@ -25,7 +25,7 @@ xxlua_require("DebugFunctions")
 ---@field protected m_isStepOut boolean 是否单步跳出
 ---@field private m_hookCallCount number hook调用次数
 ---@field private m_lastReceiveTime number 最后一次receive时间
----@field private m_lastNextTime number 最后一次单步跳过时间
+---@field protected m_lastNextTime number 最后一次单步跳过时间
 ---@field private m_setVariableCache S2C_setVariable[]
 local DebugBase = xxlua_require("DebugClass")("DebugBase")
 

@@ -193,6 +193,7 @@
                             "errorPause",
                             "printType",
                             "externalVariables",
+                            "expensiveCallNotifyThresholds",
                             "filterFiles"
                         ],
                         "properties": {
@@ -218,12 +219,17 @@
                             "printType": {
                                 "type": "number",
                                 "default": 1,
-                                "description": "print打印方式 1 控制台和系统输出,2 控制台输出,3 系统输出",
+                                "description": "print函数输出方式 1 VSCode控制台和系统输出，2 仅VSCode控制台输出，3 仅系统输出",
                                 "enum": [
                                     1,
                                     2,
                                     3
                                 ]
+                            },
+                            "expensiveCallNotifyThresholds": {
+                                "type": "number",
+                                "default": 0.125,
+                                "description": "单步跳过时，函数调用耗时超过此时间时（秒）将会被通知。由于调试器也会影响代码执行效率，此提示仅供参考"
                             },
                             "externalVariables": {
                                 "type": "array",
@@ -259,6 +265,7 @@
                     "port": 8896,
                     "errorPause": true,
                     "printType": 1,
+                    "expensiveCallNotifyThresholds": 0.125,
                     "externalVariables": [
                         "super",
                         "_super",
@@ -280,6 +287,7 @@
                         "port": 8896,
                         "errorPause": true,
                         "printType": 1,
+                        "expensiveCallNotifyThresholds": 0.125,
                         "externalVariables": [
                             "super",
                             "_super",
