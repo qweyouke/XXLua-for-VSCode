@@ -97,11 +97,7 @@ function DebugBase:initialize()
     self.m_loop_coroutine = coroutine.create(handler(self, self.debugger_onLoop))
     _resume(self.m_loop_coroutine)
 
-    if self.m_isHookEnabled then
-        self:debugger_initDebugHook("lrc")
-    else
-        self:debugger_initDebugHook("c")
-    end
+    self:debugger_initDebugHook("lrc")
 end
 
 ---@public
@@ -213,13 +209,6 @@ function DebugBase:debugger_setBreakInfo(data)
     local isHookEnabled = next(self.m_breakPoints) and true
     if self.m_isHookEnabled ~= isHookEnabled then
         self.m_isHookEnabled = isHookEnabled
-        if self.m_initData and self.m_supportSocket then
-            if isHookEnabled then
-                self:debugger_initDebugHook("lrc")
-            else
-                self:debugger_initDebugHook("c")
-            end
-        end
     end
 end
 
@@ -520,7 +509,7 @@ end
 
 ---@public
 ---命中断点 (开发者用)
----@param level number? 堆层级 一般调用不需要传
+---@param level number? 堆层级
 function DebugBase:hitBreakPoint(level)
     if not self.m_initData then
         return

@@ -94,6 +94,10 @@ function LuaDebugOrigin:debug_hook(event, line)
 
     if event == "call" or event == "tail call" then
         if not self.m_isInRun then
+            if event == "tail call" then
+                --tail call实际上相当于return和call事件同时调用、所以引用计数需要先减1再加1
+                self:SubStepInCount()
+            end
             self:AddStepInCount()
         end
         if not self.m_currentInfo then
@@ -160,8 +164,10 @@ function LuaDebugOrigin:debug_hook(event, line)
                     self:hitBreakPoint(3)
                     return
                 else
-                    -- xpcall和pcall的函数调用如果发生报错时，m_stepInCount可能会不成对的增减，导致m_stepInCount永远大于0，从而导致无法进入断点
-                    -- 为了避免这种情况，这里做了一个保护
+                    -- xpcall和pcall的函数调用如果发生报错、tail call多层嵌套时
+                    -- m_stepInCount可能会不成对的增减，导致m_stepInCount永远大于0，从而导致无法进入断点
+                    -- 为了避免这种情况，这里做了一个保护，但仍可能存在突破保护的情况（即单步跳过时未断到下一步）
+                    -- 突破保护后直到进入下一个手动打的断点之前，代码执行性能将小幅下降
                     if self.m_isLastReturn then
                         self.m_isLastReturn = false
                         local info2 = debug.getinfo(2, "f")
