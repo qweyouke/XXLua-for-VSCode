@@ -46,7 +46,9 @@ function LuaDebugOrigin:AddStepInCount()
 end
 
 function LuaDebugOrigin:SubStepInCount()
-    self.m_stepInCount = self.m_stepInCount - 1
+    if self.m_stepInCount > 0 then
+        self.m_stepInCount = self.m_stepInCount - 1
+    end
 end
 
 function LuaDebugOrigin:debugger_resetDebugInfo()
@@ -90,7 +92,7 @@ function LuaDebugOrigin:debug_hook(event, line)
         end
     end
 
-    if event == "call" then
+    if event == "call" or event == "tail call" then
         if not self.m_isInRun then
             self:AddStepInCount()
         end

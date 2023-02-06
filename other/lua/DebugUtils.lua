@@ -742,7 +742,8 @@ do
             else
                 valueStr = "nil"
             end
-            print(string.format("Setting variable \"%s\" to {%s}", key, valueStr))
+            print(string.format("Setting variable \"%s\" to {%s}. Skip the current breakpoint to take effect", key,
+                valueStr))
             return Utils.createVariable(value)
         else
             printErr(string.format("Setting variable \"%s\" failure.", key))
