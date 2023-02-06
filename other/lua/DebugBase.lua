@@ -604,9 +604,8 @@ end
 ---@public
 ---停止调试
 function DebugBase:stopDebug()
-    print("StopDebug")
-
     if self.m_supportSocket then
+        print("StopDebug")
         self.m_supportSocket:close()
         self.m_supportSocket = nil
         self.m_debugSocket:close()

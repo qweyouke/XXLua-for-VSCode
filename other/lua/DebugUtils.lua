@@ -5,6 +5,7 @@ local Utils = {}
 local filePathCachePaths = {}
 local compareStrCache = {}
 local compareCache = {}
+local filterFileCache = {}
 local CSHARP_BASE_VALUE = {
     ["System.Boolean"] = "boolean",
     ["System.Char"] = "string",
@@ -200,14 +201,15 @@ function Utils.lastFind(str, k)
 end
 
 --获取路径详情
-function Utils.getFilePathInfo(file)
-    if filePathCachePaths[file] then
-        return filePathCachePaths[file][1], filePathCachePaths[file][2], filePathCachePaths[file][3]
+function Utils.getFilePathInfo(path)
+    local cache = filePathCachePaths[path]
+    if cache then
+        return cache[1], cache[2], cache[3]
     end
 
     local fileName = nil
 
-    file = file:gsub("/.\\", "/")
+    local file = path:gsub("/.\\", "/")
     file = file:gsub("\\", "/")
     file = file:gsub("//", "/")
     if file:find("@") == 1 then
@@ -238,7 +240,7 @@ function Utils.getFilePathInfo(file)
         file = file .. surfixName
     end
 
-    filePathCachePaths[file] = {
+    filePathCachePaths[path] = {
         file,
         fileName,
         surfixName
@@ -963,7 +965,7 @@ function Utils.unpackStr(...)
         local strRet = {}
         for i = 1, len do
             local v = arg[i]
-            if Utils.isNil(v) then
+            if v == nil then
                 strRet[i] = "nil"
             else
                 local tp = type(v)
@@ -1080,10 +1082,35 @@ function Utils.comparePath(path1, path2)
     end
 end
 
+---@public 是否是被过滤文件
+function Utils.isFilterFile(filePath)
+    local ret = filterFileCache[filePath]
+    if ret ~= nil then
+        return ret
+    end
+    local initData = LuaDebug:getDebugData()
+    if initData then
+        local filterFiles = initData.filterFiles
+        if filterFiles then
+            for i, v in pairs(filterFiles) do
+                if Utils.comparePath(filePath, v) then
+                    ret = true
+                    break
+                end
+            end
+        end
+    end
+    if not ret then
+        ret = false
+    end
+    filterFileCache[filePath] = ret
+    return ret
+end
+
 ---@public
 ---执行代码.
 ---@param conditionStr string 表达式
----@param level number 堆栈level
+---@param level number? 堆栈level
 ---@return any
 function Utils.executeScript(conditionStr, level, isDisableErrorLog)
     level = level or 3

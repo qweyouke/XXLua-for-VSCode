@@ -5,7 +5,7 @@
 ---@field private m_continueStackInfo StackInfo[] 跳过断点时的堆栈信息
 ---@field private m_stepNextTime number 单步跳过断点时hook的执行次数
 ---@field private m_isForceHitNextLine boolean 是否强制命中下一行断点
-local LuaDebugJit = xxlua_require("DebugClass") ("LuaDebugJit", xxlua_require("DebugBase"))
+local LuaDebugJit = xxlua_require("DebugClass")("LuaDebugJit", xxlua_require("DebugBase"))
 ---@type Utils
 local Utils = xxlua_require("DebugUtils")
 local _yield = coroutine.yield
@@ -115,12 +115,8 @@ function LuaDebugJit:debug_hook(event, line)
         end
 
         local filePath, fileName, surfix = Utils.getFilePathInfo(info.source)
-        if self.m_initData and self.m_initData.filterFiles then
-            for i, v in pairs(self.m_initData.filterFiles) do
-                if Utils.comparePath(filePath, v) then
-                    return
-                end
-            end
+        if Utils.isFilterFile(filePath) then
+            return
         end
 
         if self.m_currentStackInfo then
@@ -189,28 +185,27 @@ function LuaDebugJit:debug_hook(event, line)
         --判断命中断点
         local breakPoints = self.m_breakPoints[fileName]
         if breakPoints then
-            for k, v in pairs(breakPoints) do
-                if v.line == line then
-                    if Utils.comparePath(v.fullPath, filePath) then
-                        --日志打印
-                        if v.logMessage then
-                            if v.logMessage:len() >= 3 then
-                                if v.logMessage:sub(1, 3) == "###" then
-                                    Utils.executeScript(
-                                        string.format("print(%s)", v.logMessage:sub(4, v.logMessage:len()))
-                                    )
-                                    return
-                                end
+
+            local breakInfo = breakPoints[line]
+            if breakInfo then
+                if Utils.comparePath(breakInfo.fullPath, filePath) then
+                    --日志打印
+                    if breakInfo.logMessage then
+                        if breakInfo.logMessage:len() >= 3 then
+                            if breakInfo.logMessage:sub(1, 3) == "###" then
+                                local exp = breakInfo.logMessage:sub(4, breakInfo.logMessage:len())
+                                Utils.executeScript(string.format("print(%s)", exp))
+                                return
                             end
-
-                            Utils.executeScript(string.format("print(%s)", v.logMessage))
                         end
 
-                        --判断条件
-                        if not v.condition or (v.condition and Utils.executeScript(v.condition)) then
-                            self:hitBreakPoint(3)
-                            return
-                        end
+                        Utils.executeScript(string.format("print(%s)", breakInfo.logMessage))
+                    end
+
+                    --判断条件
+                    if not breakInfo.condition or (breakInfo.condition and Utils.executeScript(breakInfo.condition)) then
+                        self:hitBreakPoint(3)
+                        return
                     end
                 end
             end
