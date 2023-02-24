@@ -82,7 +82,7 @@ function LuaDebugOrigin:debug_hook(event, line)
     end
 
     if self.m_isInRun then
-        if event == "line" then
+        if line then
             if not self.m_breakLines[line] then
                 return
             end
@@ -131,7 +131,7 @@ function LuaDebugOrigin:debug_hook(event, line)
         if self.m_currentStackInfo then
             if self.m_isStepOut then
                 if self.m_isLastReturn then
-                    self.m_isLastReturn = true
+                    self.m_isLastReturn = false
                     if #self.m_currentStackInfo == 1 then
                         --堆栈深度只有1
                         --直接进入断点
