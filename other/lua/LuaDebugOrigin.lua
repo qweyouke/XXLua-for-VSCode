@@ -86,7 +86,6 @@ function LuaDebugOrigin:debug_hook(event, line)
             return
         else
             self.m_currentInfo = nil
-            return
         end
     end
 
