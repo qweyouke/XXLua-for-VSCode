@@ -100,13 +100,11 @@ function LuaDebugOrigin:debug_hook(event, line)
             end
             self:AddStepInCount()
         end
-        if not self.m_currentInfo then
-            local info = debug.getinfo(2, "S")
-            if info.source == "=[C]" or info.source == "[C]" then
-                return
-            end
-            self.m_currentInfo = info
+        local info = debug.getinfo(2, "S")
+        if info.source == "=[C]" then
+            return
         end
+        self.m_currentInfo = info
     elseif event == "return" or event == "tail return" then
         if not self.m_isInRun then
             self:SubStepInCount()
@@ -117,7 +115,7 @@ function LuaDebugOrigin:debug_hook(event, line)
         local info = self.m_currentInfo
         if not info then
             info = debug.getinfo(2, "S")
-            if info.source == "=[C]" or info.source == "[C]" then
+            if info.source == "=[C]" then
                 return
             end
             self.m_currentInfo = info
@@ -130,6 +128,7 @@ function LuaDebugOrigin:debug_hook(event, line)
 
         if self.m_currentStackInfo then
             if self.m_isStepOut then
+                --单步跳出
                 if self.m_isLastReturn then
                     self.m_isLastReturn = false
                     if #self.m_currentStackInfo == 1 then
@@ -148,10 +147,12 @@ function LuaDebugOrigin:debug_hook(event, line)
                 end
 
             elseif self.m_isStepIn then
+                --单步跳入
                 --进入断点
                 self:hitBreakPoint(3)
                 return
             elseif self.m_isStepNext then
+                --单步跳过
                 if self.m_stepInCount <= 0 then
                     -- 单步跳过时，如果执行时间超过阈值，则打印出来
                     local dt = os.clock() - self.m_lastNextTime
