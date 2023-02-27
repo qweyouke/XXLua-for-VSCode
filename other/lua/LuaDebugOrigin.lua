@@ -82,36 +82,15 @@ function LuaDebugOrigin:debug_hook(event, line)
     end
 
     if self.m_isInRun then
-        if line then
-            if not self.m_breakLines[line] then
-                return
-            end
+        if line and not self.m_breakLines[line] then
+            return
         else
             self.m_currentInfo = nil
             return
         end
     end
 
-    if event == "call" or event == "tail call" then
-        if not self.m_isInRun then
-            if event == "tail call" then
-                --tail call实际上相当于return和call事件同时调用、所以引用计数需要先减1再加1
-                self:SubStepInCount()
-            end
-            self:AddStepInCount()
-        end
-        local info = debug.getinfo(2, "S")
-        if info.source == "=[C]" then
-            return
-        end
-        self.m_currentInfo = info
-    elseif event == "return" or event == "tail return" then
-        if not self.m_isInRun then
-            self:SubStepInCount()
-        end
-        self.m_currentInfo = nil
-        self.m_isLastReturn = true
-    elseif event == "line" then
+    if line then
         local info = self.m_currentInfo
         if not info then
             info = debug.getinfo(2, "S")
@@ -217,7 +196,25 @@ function LuaDebugOrigin:debug_hook(event, line)
                 end
             end
         end
-
+    elseif event == "call" or event == "tail call" then
+        if not self.m_isInRun then
+            if event == "tail call" then
+                --tail call实际上相当于return和call事件同时调用、所以引用计数需要先减1再加1
+                self:SubStepInCount()
+            end
+            self:AddStepInCount()
+        end
+        local info = debug.getinfo(2, "S")
+        if info.source == "=[C]" then
+            return
+        end
+        self.m_currentInfo = info
+    elseif event == "return" or event == "tail return" then
+        if not self.m_isInRun then
+            self:SubStepInCount()
+        end
+        self.m_currentInfo = nil
+        self.m_isLastReturn = true
     end
 end
 
