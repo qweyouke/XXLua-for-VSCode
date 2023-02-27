@@ -14,5 +14,6 @@
     "cSpell.words": [
         "tbkey"
     ],
-    "Lua.runtime.version": "Lua 5.4"
+    "Lua.runtime.version": "Lua 5.4",
+    "editor.snippetSuggestions": "bottom"
 }
