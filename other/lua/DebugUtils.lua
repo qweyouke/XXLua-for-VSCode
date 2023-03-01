@@ -136,8 +136,19 @@ end
 
 --获取table地址
 function Utils.getTbKey(var)
-    if type(var) == "userdata" and Utils.isLoadedLuaDebugTool() then
-        return CS.LuaDebugTool.GetTbKey(var)
+    if type(var) == "table" then
+        return tostring(var)
+    elseif Utils.isCSharpTable(var) and Utils.isLoadedLuaDebugTool() then
+        local ret
+        Utils.xpcall(
+            function()
+                ret = CS.LuaDebugTool.GetTbKey(var)
+            end,
+            function(msg)
+                ret = msg
+            end
+        )
+        return ret
     else
         return tostring(var)
     end
@@ -149,12 +160,12 @@ function Utils.isNil(var)
         return true
     end
 
-    if type(var) == "userdata" then
+    if Utils.isCSharpTable(var) then
         --UntyEngine的Object判空不能直接判nil
         if var.IsNull ~= nil then
             return var:IsNull()
         else
-            return nil
+            return false
         end
     end
 
@@ -164,30 +175,34 @@ end
 --是否是c#表
 function Utils.isCSharpTable(var)
     local ret
-    Utils.tryCatch(function()
+    Utils.xpcall(function()
         ret = (type(var) == "userdata" and var.GetType and not CSHARP_BASE_VALUE[tostring(var:GetType())])
+    end, function()
+        ret = false
     end)
     return ret
 end
 
 --是否加载c#调试工具
+local isLoadedLuaDebugTool
 function Utils.isLoadedLuaDebugTool()
-    local tool = CS and CS.LuaDebugTool
-    if tool then
-        local ret
-        Utils.xpcall(
-            function()
-                tool.GetTbKey("")
-                ret = true
-            end,
-            function()
-                ret = false
-            end
-        )
-        return ret
-    else
-        return false
+    if isLoadedLuaDebugTool == nil then
+        local tool = CS and CS.LuaDebugTool
+        if tool then
+            Utils.xpcall(
+                function()
+                    tool.GetTbKey("")
+                    isLoadedLuaDebugTool = true
+                end,
+                function()
+                    isLoadedLuaDebugTool = false
+                end
+            )
+        else
+            return false
+        end
     end
+    return isLoadedLuaDebugTool
 end
 
 --反向查找
@@ -368,14 +383,22 @@ function Utils.ParseCSharpValue(csharpVar)
         end
 
         if csharpVar then
-            ---@type CSharp_ValueInfo
-            local fields = CS.LuaDebugTool.ParseCSharpValue(csharpVar)
+            Utils.xpcall(
+                function()
+                    ---@type CSharp_ValueInfo
+                    local fields = CS.LuaDebugTool.ParseCSharpValue(csharpVar)
 
-            ---@diagnostic disable-next-line: undefined-field
-            for i = 1, fields.Count do
-                local field = fields[i - 1]
-                createCSharpVariable(field)
-            end
+                    ---@diagnostic disable-next-line: undefined-field
+                    for i = 1, fields.Count do
+                        local field = fields[i - 1]
+                        createCSharpVariable(field)
+                    end
+                end,
+                function(msg)
+                    varInfos["error"] = msg
+                end
+            )
+
         end
 
     else
@@ -470,10 +493,6 @@ function Utils.createVariable(v)
         local type = type(v)
         if type == "table" or Utils.isCSharpTable(v) then
             return { type = "table", var = Utils.getTbKey(v) }
-        elseif type == "userdata" then
-            ---@diagnostic disable-next-line: undefined-field
-            return { type = v.GetType and (CSHARP_BASE_VALUE[tostring(v:GetType())] or "unknown") or "unknown",
-                var = tostring(v) }
         elseif type == "string" then
             v = Utils.filterSpecChar(tostring(v))
             return { type = "string", var = v }
@@ -533,9 +552,22 @@ function Utils.safeGet(tb, key, isSearchSpecialKeyType)
                 end
             end
         end
-    elseif Utils.isLoadedLuaDebugTool() and Utils.isCSharpTable(tb) then
+    elseif Utils.isCSharpTable(tb) then
         --C#对象
-        return CS.LuaDebugTool.GetCSharpValue(tb, key), type(key)
+        if Utils.isLoadedLuaDebugTool() then
+            local ret, ty
+            Utils.xpcall(
+                function()
+                    ret, ty = CS.LuaDebugTool.GetCSharpValue(tb, key), type(key)
+                end,
+                function(msg)
+                    ret, ty = msg, "error"
+                end
+            )
+            return ret, ty
+        else
+            return "读取C#变量失败，请确定LuaDebugTool.cs文件在项目工程中并启动", "error"
+        end
     end
 
     return nil
@@ -797,7 +829,7 @@ do
             key = transformValue(upperTable, key, keyType)
             value = Utils.executeScript(value, level + 1, true)
 
-            local ret 
+            local ret
             if upperTable == vars.locals then
                 debug.setlocal(level, stackValue.localsIndex[key], value)
                 ret = true
@@ -907,10 +939,6 @@ do
                 traverseExtraVars(ret.var, realVar)
             elseif Utils.isCSharpTable(realVar) then
                 ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
-            elseif type(realVar) == "userdata" then
-                ret = { type = realVar.GetType and (CSHARP_BASE_VALUE[tostring(realVar:GetType())] or "unknown") or
-                    "unknown",
-                    var = tostring(realVar) }
             else
                 ret = Utils.createVariable(realVar)
             end
@@ -944,7 +972,7 @@ function Utils.watchExpression(exp)
         for k, v in pairs(ret) do
             var.var[tostring(k)] = Utils.createVariable(v)
         end
-    elseif type == "userdata" then
+    elseif Utils.isCSharpTable(ret) then
         var = { type = "table", var = Utils.ParseCSharpValue(ret) }
     else
         var = Utils.createVariable(ret)
