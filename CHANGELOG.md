@@ -1,4 +1,7 @@
 # 更改日志 
+### Version:1.2.2   2023年3月14日
+- 修复externalVariables极端情况下死循环的bug
+
 ### Version:1.2.1   2023年3月1日
 - 修复查看"userdata"数据时报错的问题
 

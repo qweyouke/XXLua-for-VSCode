@@ -363,7 +363,6 @@ function Utils.loadScopes()
 
     return scopeData
 end
-
 --解析c#对象为VariableData
 ---@param csharpVar userdata
 ---@return table<string, VariableData>
@@ -661,10 +660,14 @@ do
             cacheKeys[k] = true
         end
 
+        local maxDeep = 5
         local getExtraVars
-        getExtraVars = function(tb, key, prefix)
+        getExtraVars = function(tb, key, prefix, deep)
             local newVar = Utils.safeGet(tb, key)
             if newVar then
+                if deep and deep > maxDeep then
+                    return
+                end
                 if type(newVar) == "table" then
                     for k, v in pairs(newVar) do
                         if Utils.isNil(cacheKeys[k]) then
@@ -680,7 +683,12 @@ do
                         end
                     end
 
-                    getExtraVars(newVar, key, prefix and prefix .. "." .. key or key)
+                    if not deep then
+                        deep = 2
+                    else
+                        deep = deep + 1
+                    end
+                    getExtraVars(newVar, key, prefix and prefix .. "." .. key or key, deep)
                 elseif Utils.isNil(cacheKeys[key]) then
                     local newKey
                     if prefix then
@@ -935,7 +943,6 @@ do
                 for k, v in pairs(realVar) do
                     ret.var[tostring(k)] = Utils.createVariable(v)
                 end
-
                 traverseExtraVars(ret.var, realVar)
             elseif Utils.isCSharpTable(realVar) then
                 ret = { type = "table", var = Utils.ParseCSharpValue(realVar) }
