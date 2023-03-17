@@ -47,7 +47,7 @@ if (not setfenv) then
                     1
                 )
                 break
-            elseif Utils.isNil(name) then
+            elseif name == nil then
                 break
             end
 
@@ -125,7 +125,9 @@ function Utils.tryCatch(func, errorFunc, ...)
     return Utils.xpcall(
         func,
         function(msg)
-            printErr(debug.traceback(msg, 2))
+            local info = debug.getinfo(2, "Sl")
+            local filePath = Utils.getFilePathInfo(info.source)
+            printErrSource(filePath, info.currentline, debug.traceback(msg, 2))
             if errorFunc then
                 return errorFunc(msg)
             end
@@ -160,7 +162,7 @@ function Utils.isNil(var)
         return true
     end
 
-    if Utils.isCSharpTable(var) then
+    if type(var) == "userdata" and Utils.isCSharpTable(var) then
         --UntyEngine的Object判空不能直接判nil
         if var.IsNull ~= nil then
             return var:IsNull()
@@ -271,7 +273,7 @@ local function getStackValue(f)
     -- get locals
     while true do
         local name, value = debug.getlocal(f, i)
-        if Utils.isNil(name) then
+        if name == nil then
             break
         end
 
@@ -289,7 +291,7 @@ local function getStackValue(f)
     local upsIndex = {}
     while func do -- check for func as it may be nil for tail calls
         local name, value = debug.getupvalue(func, i)
-        if Utils.isNil(name) then
+        if name == nil then
             break
         end
 
@@ -313,7 +315,7 @@ function Utils.getStackInfo(ignoreCount, isFindVar)
     local ret = {}
     for i = ignoreCount, 100 do
         local source = debug.getinfo(i)
-        if Utils.isNil(source) then
+        if source == nil then
             break
         end
 
@@ -363,6 +365,7 @@ function Utils.loadScopes()
 
     return scopeData
 end
+
 --解析c#对象为VariableData
 ---@param csharpVar userdata
 ---@return table<string, VariableData>
@@ -418,18 +421,19 @@ local DisableDelChars = {
 function Utils.filterSpecChar(s)
     local ss = {}
     local k = 1
-    while true do
-        if k > #s then
-            break
-        end
 
-        local c = string.byte(s, k)
-        if Utils.isNil(c) then
-            break
-        end
+    Utils.xpcall(
+        function()
+            while true do
+                if k > #s then
+                    break
+                end
 
-        Utils.xpcall(
-            function()
+                local c = string.byte(s, k)
+                if c == nil then
+                    break
+                end
+
                 if c < 192 then
                     if (c >= 32 and c <= 126) or DisableDelChars[c] then
                         table.insert(ss, string.char(c))
@@ -472,12 +476,14 @@ function Utils.filterSpecChar(s)
                 else
                     k = k + 1
                 end
-            end,
-            function(msg)
-                table.insert(ss, "parse error: " .. msg)
+
+
             end
-        )
-    end
+        end,
+        function(msg)
+            table.insert(ss, "parse error: " .. msg)
+        end)
+
 
     return table.concat(ss)
 end
@@ -615,14 +621,14 @@ do
             if newVar then
                 if type(newVar) == "table" then
                     for k2, v2 in pairs(newVar) do
-                        if Utils.isNil(tb[k2]) then
+                        if tb[k2] == nil then
                             tb[k2] = v2
                         end
                     end
 
                     loadExtraVar(newVar, tb)
                 else
-                    if Utils.isNil(tb[v]) then
+                    if tb[v] == nil then
                         tb[v] = newVar
                     end
                 end
@@ -670,7 +676,7 @@ do
                 end
                 if type(newVar) == "table" then
                     for k, v in pairs(newVar) do
-                        if Utils.isNil(cacheKeys[k]) then
+                        if cacheKeys[k] == nil then
                             local newKey
                             if prefix then
                                 newKey = k .. " [" .. prefix .. "." .. key .. "]"
@@ -689,7 +695,7 @@ do
                         deep = deep + 1
                     end
                     getExtraVars(newVar, key, prefix and prefix .. "." .. key or key, deep)
-                elseif Utils.isNil(cacheKeys[key]) then
+                elseif cacheKeys[key] == nil then
                     local newKey
                     if prefix then
                         newKey = key .. " [" .. prefix .. "." .. key .. "]"
@@ -1037,7 +1043,7 @@ function Utils.reloadLua(data)
         function()
             local luaPath = data.luaPath
             local oldValue = package.loaded[luaPath]
-            if Utils.isNil(oldValue) then
+            if oldValue == nil then
                 local idx = Utils.lastFind(luaPath, "%.")
                 if idx then
                     luaPath = luaPath:sub(idx + 1, luaPath:len())
@@ -1165,14 +1171,14 @@ function Utils.executeScript(conditionStr, level, isDisableErrorLog)
 
     if (ups) then
         for k, v in pairs(ups) do
-            if Utils.isNil(env[k]) then
+            if env[k] == nil then
                 env[k] = v
             end
         end
     end
 
     for k, v in pairs(global) do
-        if Utils.isNil(env[k]) then
+        if env[k] == nil then
             env[k] = v
         end
     end
@@ -1212,13 +1218,13 @@ function Utils.executeScriptInBreakPoint(exp, isSimpleRet)
     end
 
     for k, v in pairs(vars.ups) do
-        if Utils.isNil(env[k]) then
+        if env[k] == nil then
             env[k] = v
         end
     end
 
     for k, v in pairs(vars.global) do
-        if Utils.isNil(env[k]) then
+        if env[k] == nil then
             env[k] = v
         end
     end

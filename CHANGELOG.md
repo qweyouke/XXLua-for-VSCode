@@ -1,4 +1,7 @@
 # 更改日志 
+### Version:1.2.3   2023年3月17日
+- 优化print性能
+
 ### Version:1.2.2   2023年3月14日
 - 修复externalVariables极端情况下死循环的bug
 

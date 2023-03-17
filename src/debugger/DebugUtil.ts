@@ -36,6 +36,12 @@ const PRINT_TYPE_STR = {
     [PrintType.error]: "stderr"
 };
 
+const PRINT_FORMAT = {
+    [PrintType.normal]: "\x1b[38;2;55;148;255m[%s]: %s\x1b[39m\n",
+    [PrintType.warning]: "\x1b[38;2;204;167;0m[%s]: %s\x1b[39m\n",
+    [PrintType.error]: "\x1b[38;2;244;135;113m[%s]: %s\x1b[39m\n"
+}
+
 const REPLACE_EXTRA_REGEXP = /\s{1}\[.*?\]/;
 
 
@@ -51,6 +57,10 @@ export class DebugUtil {
     //获取打印类型
     public getPrintTypeStr(type: PrintType): string {
         return PRINT_TYPE_STR[type];
+    }
+
+    public getPrintFormat(type: PrintType): string {
+        return PRINT_FORMAT[type];
     }
 
     //是否是过滤字符串

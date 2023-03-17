@@ -156,7 +156,9 @@ end
 ---发送控制台打印消息
 ---@param msg string
 ---@param type number 类型 0普通 1警告 2错误
-function DebugClient:printConsole(msg, type)
+---@param path string
+---@param line number
+function DebugClient:printConsole(msg, type, path, line)
     type = type or 0
     local msgTb = {}
     while true do
@@ -177,7 +179,7 @@ function DebugClient:printConsole(msg, type)
     end
 
     for k, v in ipairs(msgTb) do
-        self:sendMsg(Protocol.printConsole, { msg = v, type = type })
+        self:sendMsg(Protocol.printConsole, { msg = v, type = type, path = path, line = line })
     end
 end
 

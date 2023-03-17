@@ -10,6 +10,8 @@ import * as vscode_debugadapter from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import * as readline from 'readline';
 import * as path from 'path';
+import { Color } from 'vscode';
+import { format } from 'util';
 
 //ref:method() ref.method()
 const WATCH_REGEXP1 = /\w+\s*\(.*\)/;
@@ -81,10 +83,79 @@ export class DebugSession extends LoggingDebugSession {
     //打印日志
     public printConsole(msg: string, type = PrintType.normal) {
         if (msg !== undefined) {
-            msg = "[" + DebugUtil.getInstance().getNowTimeStr() + "]: " + msg + "\n";
-            this.sendEvent(new vscode_debugadapter.OutputEvent(msg, DebugUtil.getInstance().getPrintTypeStr(type)));
+            msg = format(DebugUtil.getInstance().getPrintFormat(type), DebugUtil.getInstance().getNowTimeStr(), msg);
+            var output = new vscode_debugadapter.OutputEvent(msg, DebugUtil.getInstance().getPrintTypeStr(type));
+            this.sendEvent(output);
         }
     }
+
+    //这是一个使用vscode_debugadapter.OutputEvent输出日志的方法。支持折叠，取输出内容的前两行作为group名
+    public logWithOutputEvent(message: string, type = PrintType.normal, path: string | undefined = undefined, line: number = 0): void {
+        if (message !== undefined) {
+            message = format(DebugUtil.getInstance().getPrintFormat(type), DebugUtil.getInstance().getNowTimeStr(), message);
+
+            let lines = message.split('\n');
+            if (lines.length > 3) {
+                let outputEvent1 = new vscode_debugadapter.OutputEvent(lines[0] + '\n' + lines[1], DebugUtil.getInstance().getPrintTypeStr(type));
+                outputEvent1.body.group = "startCollapsed";
+                let outputEvent2 = new vscode_debugadapter.OutputEvent(lines.slice(2).join('\n'), DebugUtil.getInstance().getPrintTypeStr(type));
+
+                let outputEvent3 = new vscode_debugadapter.OutputEvent("");
+                outputEvent3.body.group = "end";
+
+                if (path !== undefined) {
+                    let listener = this.addSafeEvent(Proto.EVENT.getFullPath,
+                        false,
+                        (data: Event_P2D_GetFullPath) => {
+                            var fullPath = data.fullPath;
+                            this.removeListener(Proto.EVENT.getFullPath, listener);
+                            const name = path.split('/').pop();
+                            outputEvent2.body.source = { name: name, path: fullPath };
+                            outputEvent2.body.line = line;
+
+                            this.sendEvent(outputEvent1);
+                            this.sendEvent(outputEvent2);
+                            this.sendEvent(outputEvent3);
+                        },
+                        () => {
+                            this.sendEvent(outputEvent1);
+                            this.sendEvent(outputEvent2);
+                            this.sendEvent(outputEvent3);
+                        }
+                    );
+                    this.sendEvent(new vscode_debugadapter.Event(Proto.EVENT.getFullPath, { filePath: path}));
+                } else {
+                    this.sendEvent(outputEvent1);
+                    this.sendEvent(outputEvent2);
+                    this.sendEvent(outputEvent3);
+                }
+            } else {
+                var output = new vscode_debugadapter.OutputEvent(message, DebugUtil.getInstance().getPrintTypeStr(type));
+                if (path !== undefined) {
+                    let listener = this.addSafeEvent(Proto.EVENT.getFullPath,
+                        false,
+                        (data: Event_P2D_GetFullPath) => {
+                            var fullPath = data.fullPath;
+                            this.removeListener(Proto.EVENT.getFullPath, listener);
+                            const name = path.split('/').pop();
+                            output.body.source = { name: name, path: fullPath };
+                            output.body.line = line;
+
+                            this.sendEvent(output);
+                        },
+                        () => {
+                            this.sendEvent(output);
+                        }
+                    );
+                    this.sendEvent(new vscode_debugadapter.Event(Proto.EVENT.getFullPath, { filePath: path }));
+                } else {
+                    this.sendEvent(output);
+                }
+            }
+            
+        }
+    }
+
 
     //初始化堆栈
     private initStackTrack() {
@@ -343,7 +414,8 @@ export class DebugSession extends LoggingDebugSession {
         const cmd = data.command;
         const args = data.arguments;
         if (cmd === Proto.CMD.printConsole) {
-            this.printConsole(args.msg, args.type);
+            // this.printConsole(args.msg, args.type);
+            this.logWithOutputEvent(args.msg, args.type, args.path, args.line);
         } else {
             // this.printConsole("onReceiveLine: " + input)
             if (cmd === Proto.CMD.pause) {

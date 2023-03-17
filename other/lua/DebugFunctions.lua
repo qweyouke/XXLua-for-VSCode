@@ -30,7 +30,7 @@ local PRINT_FORMAT = {
         return string.format("<b><color=#999999>[Lua] </color></b>%s\n", color, str)
     end,
     DUMP = function(color, title, des)
-        return string.format("<b><color=#999999>[Lua] </color></b><color=#3A9BFF>%s</color>%s\n", color, title, des)
+        return string.format("<b><color=#999999>[Lua] </color></b><color=#3794FF>%s</color>%s\n", color, title, des)
     end
 }
 
@@ -38,14 +38,16 @@ local PRINT_FORMAT = {
 ---@private
 ---@param typeData PrintTypeData
 ---@param str string
-local function doConsolePrint(typeData, str)
+---@param path string
+---@param line number
+local function doConsolePrint(typeData, str, path, line)
     ---@type S2C_InitializeArgs
     local debugData = LuaDebug and LuaDebug:getDebugData() or nil
     if not debugData or (debugData and (debugData.printType == 1 or debugData.printType == 2)) then
         if LuaDebug then
             local debugSocket = LuaDebug:getSupportSocket()
             if debugSocket then
-                debugSocket:printConsole(str, typeData.type)
+                debugSocket:printConsole(str, typeData.type, path, line)
             end
         end
     end
@@ -64,8 +66,6 @@ local function doNormalPrint(typeData, str)
             printOrigin(str)
         end
     end
-
-    doConsolePrint(typeData, str)
 end
 
 ---@private
@@ -92,18 +92,57 @@ end
 local function doPrint(type, ...)
     local str = Utils.unpackStr(...)
     doNormalPrint(type, str)
+    doConsolePrint(type, str)
 end
 
+---@private
+---@param type PRINT_TYPE
+---@param path string
+---@param line number
+---@param ... string
+local function doPrintSource(type, path, line, ...)
+    local str = Utils.unpackStr(...)
+    doNormalPrint(type, str)
+    doConsolePrint(type, str, path, line)
+end
+
+---打印普通信息
 function print(...)
     doPrint(PRINT_TYPE.NORMAL, ...)
 end
 
+---打印警告信息
+function printWarn(...)
+    doPrint(PRINT_TYPE.WARNING, ...)
+end
+
+---打印错误信息
 function printErr(...)
     doPrint(PRINT_TYPE.ERROR, ...)
 end
 
-function printWarn(...)
-    doPrint(PRINT_TYPE.WARNING, ...)
+---打印普通信息
+---@param path string
+---@param line number
+---@param ... string
+function printSource(path, line, ...)
+    doPrintSource(PRINT_TYPE.NORMAL, path, line, ...)
+end
+
+---打印警告信息
+---@param path string
+---@param line number
+---@param ... string
+function printWarnSource(path, line, ...)
+    doPrintSource(PRINT_TYPE.WARNING, path, line, ...)
+end
+
+---打印错误信息
+---@param path string
+---@param line number
+---@param ... string
+function printErrSource(path, line, ...)
+    doPrintSource(PRINT_TYPE.ERROR, path, line, ...)
 end
 
 function dump(value, desciption, nesting)

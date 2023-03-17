@@ -42,6 +42,8 @@ local S2C_SetBreakpointsArgs
 ---@class C2S_PrintConsoleArgs
 ---@field msg string
 ---@field type number 1正常 2警告 3错误
+---@field path string
+---@filed line number
 local C2S_PrintConsoleArgs
 
 ---获取变量域
