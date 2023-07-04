@@ -14,7 +14,7 @@ do
     end
 
     local f_str_ctrl_pat
-    if _VERSION == "Lua 5.1" then
+    if string.find(_VERSION, "5.1") ~= -1 then
         -- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
         f_str_ctrl_pat = '[^\32-\255]'
     else
@@ -530,7 +530,7 @@ do
     local huge, tiny = 1 / 0, -1 / 0
 
     local f_string_esc_pat
-    if _VERSION == "Lua 5.1" then
+    if string.find(_VERSION, "5.1") ~= -1 then
         -- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
         f_string_esc_pat = '[^ -!#-[%]^-\255]'
     else
@@ -731,7 +731,7 @@ do
     end
 
     local f_str_ctrl_pat
-    if _VERSION == "Lua 5.1" then
+    if string.find(_VERSION, "5.1") ~= -1 then
         -- use the cluttered pattern because lua 5.1 does not handle \0 in a pattern correctly
         f_str_ctrl_pat = '[^\32-\255]'
     else

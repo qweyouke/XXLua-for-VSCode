@@ -531,7 +531,23 @@ function Utils.safeGet(tb, key, isSearchSpecialKeyType)
         return nil
     end
 
-    if type(tb) == "table" then
+    if Utils.isCSharpTable(tb) then
+        --C#对象
+        if Utils.isLoadedLuaDebugTool() then
+            local ret, ty
+            Utils.xpcall(
+                function()
+                    ret, ty = CS.LuaDebugTool.GetCSharpValue(tb, key), type(key)
+                end,
+                function(msg)
+                    ret, ty = msg, "error"
+                end
+            )
+            return ret, ty
+        else
+            return "读取C#变量失败，请确定LuaDebugTool.cs文件在项目工程中并启动", "error"
+        end
+    elseif type(tb) == "table" or type(tb) == "userdata" then
         --lua对象
         local ret = Utils.rawget(tb, key)
         if ret then
@@ -556,22 +572,6 @@ function Utils.safeGet(tb, key, isSearchSpecialKeyType)
                     return v, type(k)
                 end
             end
-        end
-    elseif Utils.isCSharpTable(tb) then
-        --C#对象
-        if Utils.isLoadedLuaDebugTool() then
-            local ret, ty
-            Utils.xpcall(
-                function()
-                    ret, ty = CS.LuaDebugTool.GetCSharpValue(tb, key), type(key)
-                end,
-                function(msg)
-                    ret, ty = msg, "error"
-                end
-            )
-            return ret, ty
-        else
-            return "读取C#变量失败，请确定LuaDebugTool.cs文件在项目工程中并启动", "error"
         end
     end
 
