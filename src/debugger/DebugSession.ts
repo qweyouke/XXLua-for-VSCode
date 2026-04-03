@@ -97,11 +97,11 @@ export class DebugSession extends LoggingDebugSession {
             let lines = message.split('\n');
             if (lines.length > 3) {
                 let outputEvent1 = new vscode_debugadapter.OutputEvent(lines[0] + '\n' + lines[1], DebugUtil.getInstance().getPrintTypeStr(type));
-                outputEvent1.body.group = "startCollapsed";
+                (outputEvent1.body as any).group = "startCollapsed";
                 let outputEvent2 = new vscode_debugadapter.OutputEvent(lines.slice(2).join('\n'), DebugUtil.getInstance().getPrintTypeStr(type));
 
                 let outputEvent3 = new vscode_debugadapter.OutputEvent("");
-                outputEvent3.body.group = "end";
+                (outputEvent3.body as any).group = "end";
 
                 if (path !== undefined) {
                     let listener = this.addSafeEvent(Proto.EVENT.getFullPath,
@@ -110,8 +110,8 @@ export class DebugSession extends LoggingDebugSession {
                             var fullPath = data.fullPath;
                             this.removeListener(Proto.EVENT.getFullPath, listener);
                             const name = path.split('/').pop();
-                            outputEvent2.body.source = { name: name, path: fullPath };
-                            outputEvent2.body.line = line;
+                            (outputEvent2.body as any).source = { name: name, path: fullPath };
+                            (outputEvent2.body as any).line = line;
 
                             this.sendEvent(outputEvent1);
                             this.sendEvent(outputEvent2);
@@ -138,8 +138,8 @@ export class DebugSession extends LoggingDebugSession {
                             var fullPath = data.fullPath;
                             this.removeListener(Proto.EVENT.getFullPath, listener);
                             const name = path.split('/').pop();
-                            output.body.source = { name: name, path: fullPath };
-                            output.body.line = line;
+                            (output.body as any).source = { name: name, path: fullPath };
+                            (output.body as any).line = line;
 
                             this.sendEvent(output);
                         },

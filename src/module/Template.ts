@@ -29,15 +29,17 @@ function resolveTemplatePath(templatePath: string) {
 
     // 如果没有工作区，相对于扩展目录
     const extensionDir = WorkspaceManager.getInstance().getExtensionDir();
-    return path.resolve(extensionDir, templatePath);
+    // 修复：extensionDir 可能为 undefined，加非空断言或默认值
+    return path.resolve(extensionDir ?? "", templatePath);
 }
 
 function checkTemplateFolder() {
     let cfg = WorkspaceManager.getInstance().getGlobalConfig();
-    let path = cfg.get(CONFIG_NAME.templateFolder);
-    if (!path) {
+    let templatePath = cfg.get<string>(CONFIG_NAME.templateFolder);
+    if (!templatePath) {
         vscode.window.showWarningMessage("没找到模板目录，点击确定导入模板", '确定')
-            .then((select: string) => {
+            // 修复：参数类型改为 string | undefined
+            .then((select: string | undefined) => {
                 if (select === "确定") {
                     Util.getInstance().showOpenDialog("导入", (importPath: string | undefined) => {
                         if (importPath) {
@@ -59,6 +61,7 @@ function checkTemplateFolder() {
                             const workspaceFolders = vscode.workspace.workspaceFolders;
                             if (workspaceFolders && workspaceFolders.length > 0) {
                                 const workspaceRoot = workspaceFolders[0].uri.fsPath;
+                                // 修复：path 变量名与 import 冲突，用 nodePath 别名或直接使用
                                 const relativePath = path.relative(workspaceRoot, importPath);
                                 cfg.update(CONFIG_NAME.templateFolder, relativePath.replace(/\\/g, '/').replace(/\/$/, ''));
                             } else {
@@ -71,16 +74,13 @@ function checkTemplateFolder() {
         return false;
     }
 
-    // 有配置路径（即使是无效的），也允许继续显示面板
-    // 在createTemplate中会检查路径并显示错误信息
     return true;
 }
 
 function createTemplate(uri: vscode.Uri) {
     if (checkTemplateFolder()) {
-        // const templatePath = WorkspaceManager.getInstance().getGlobalConfig().get<string>(CONFIG_NAME.templateFolder);
         let cfg = WorkspaceManager.getInstance().getGlobalConfig();
-        let templatePath = cfg.get(CONFIG_NAME.templateFolder);
+        let templatePath = cfg.get<string>(CONFIG_NAME.templateFolder);
         if (!templatePath) { return; }
 
         templatePath = resolveTemplatePath(templatePath);
@@ -95,7 +95,8 @@ function createTemplate(uri: vscode.Uri) {
             matchOnDescription: true,
             matchOnDetail: true,
             placeHolder: '请选择模板'
-        }).then(function (selectFileName: string) {
+        // 修复：参数类型改为 string | undefined
+        }).then(function (selectFileName: string | undefined) {
             if (!selectFileName) {
                 return;
             }
@@ -110,9 +111,9 @@ function createTemplate(uri: vscode.Uri) {
                 function (fileName: string | undefined) {
                     const config = WorkspaceManager.getInstance().getWorkspaceConfig();
                     const createFile = (className: string | undefined) => {
-                        const templateFilePath = path.join(templatePath, selectFileName);
+                        // 修复：templatePath 在闭包内可能 undefined，加断言
+                        const templateFilePath = path.join(templatePath!, selectFileName);
                         let data = Util.getInstance().readFile(templateFilePath);
-                        // let data = Util.getInstance().readFile(templatePath + selectFileName);
                         data = data.replace(/{moduleName}/g, className || "undefined");
                         data = data.replace(/{time}/g, Util.getInstance().formatDate());
 
@@ -129,8 +130,7 @@ function createTemplate(uri: vscode.Uri) {
 
                         let doCreate = () => {
                             var dir = Util.getInstance().getDirPath(uri.fsPath);
-                            // const filePath = dir + "\\" + fileName + surfix;
-                            const filePath = path.join(dir, fileName + surfix);
+                            const filePath = path.join(dir, (fileName ?? "") + surfix);
                             Util.getInstance().writeFile(filePath, data);
                             Util.getInstance().openFileInVscode(filePath);
                         };
@@ -181,11 +181,11 @@ function createTemplate(uri: vscode.Uri) {
 function openTemplateFloder() {
     if (checkTemplateFolder()) {
         let cfg = WorkspaceManager.getInstance().getGlobalConfig();
-        let templatePath = cfg.get(CONFIG_NAME.templateFolder);
-        // const templatePath = WorkspaceManager.getInstance().getGlobalConfig().get<string>(CONFIG_NAME.templateFolder);
+        let templatePath = cfg.get<string>(CONFIG_NAME.templateFolder);
         if (!templatePath) { return; }
 
         templatePath = resolveTemplatePath(templatePath);
+        // 修复：templatePath 类型为 string，fs.existsSync 正常接受
         if (!fs.existsSync(templatePath)) {
             vscode.window.showErrorMessage("模板目录不存在: " + templatePath);
             return;
